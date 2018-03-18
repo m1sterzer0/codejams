@@ -68,7 +68,7 @@ def testClassifier2(N,runs) :
     plt.show()
 
 if __name__ == "__main__" :
-    #badHistogram(100,50000)
+    badHistogram(100,50000)
     #badHistogram(1000,10000)
-    testClassifier1(1000,1000)
-    testClassifier2(1000,1000)    
+    #testClassifier1(1000,1000)
+    #testClassifier2(1000,1000)    
