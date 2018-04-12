@@ -38,16 +38,35 @@ def doRooks(n,board) :
     ## Rook placement can be very greedy
     for i in range(n) :
         for j in range (n) :
-            if board[i][j] = '.' : placeRook(board,i,j,n)
+            if board[i][j] == '.' : placeRook(board,i,j,n)
 
 def doBishops(n,board) :
-    ## Sort 
+    ## First, count the number of bishops on each main diagonal
+    mainDiagCounts = []
+    for ss in range(0,2*n-1) :
+        empty = 0
+        for i in range(n) :
+            j = ss-i
+            if j >= 0 and j < n and board[i][j] == '.' : empty += 1
+        mainDiagCounts.append((empty,ss))
+
+    ## Sort the diagonals by available squares
+    mainDiagCounts.sort()
+
+    ## Place the bishops from least avaiable squares to greates
+    for (c,s) in mainDiagCounts :
+        for i in range(n) :
+            j = s-i
+            if j >= 0 and j < n and board[i][j] == '.' :
+                placeBishop(board,i,j,n)
+                break
 
 
 
 
 
 
+    
 if __name__ == "__main__" :
     IN = myin()
     t, = IN.ints()
