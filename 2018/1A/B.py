@@ -19,27 +19,6 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-class minheap(object) :
-    def __init__(self) : self.h = []
-    def push(self,a)   : heapq.heappush(self.h,a)
-    def pop(self)      : return heapq.heappop(self.h)
-    def top(self)      : return self.h[0]
-    def empty(self)    : return False if self.h else True
-
-def simulate(ctuple,b,cashiers) :
-    mh = minheap()
-    bitsSoFar =0; t = -1
-    for i in ctuple :
-        ds = (cashiers[i][2] + cashiers[i][1], i, 1)
-        mh.push(ds)
-    while bitsSoFar < b and not mh.empty() :
-        (t,i,nb) = mh.pop()
-        bitsSoFar+=1
-        if nb < cashiers[i][0] :
-            mh.push((t + cashiers[i][1], i, nb+1))
-    if bitsSoFar == b : return t
-    return 1e99
-
 def coins(c,t) :
     maxt = c[2] + c[1] * c[0]
     if t >= maxt : return c[0]
