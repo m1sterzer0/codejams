@@ -1,4 +1,5 @@
 import sys
+import copy
 
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
@@ -54,51 +55,58 @@ def doBishops(n,board) :
     mainDiagCounts.sort()
 
     ## Place the bishops from least avaiable squares to greates
-    for (c,s) in mainDiagCounts :
+    for (_,s) in mainDiagCounts :
         for i in range(n) :
             j = s-i
             if j >= 0 and j < n and board[i][j] == '.' :
                 placeBishop(board,i,j,n)
                 break
 
+def combineBishopsAndRooks(n,rooks,bishops) :
+    board = [['.'] * n for x in range(n)]
+    for i in range(n) :
+        for j in range(n) :
+            if rooks[i][j] == 'o' and bishops[i][j] == 'o' : board[i][j] = 'o'
+            elif rooks[i][j] == 'o'                        : board[i][j] = 'x'
+            elif bishops[i][j] == 'o'                      : board[i][j] = '+'
+    return board
 
+def scoreBoard(n,oldboard,newboard) :
+    score,subs = 0,[]
+    scoreDict = { '.' : 0, 'x' : 1, '+' : 1, 'o' : 2 }
+    for i in range(n) :
+        for j in range(n) :
+            score += scoreDict[newboard[i][j]]
+            if oldboard[i][j] != newboard[i][j] :
+                subs.append( (newboard[i][j],i+1,j+1) )
+    return score,subs
 
+def getBoard(n,m,myin) :
+    board = [['.'] * n for x in range(n) ]
+    for _ in range(m) :
+        c,x,y = myin.strs(); x = int(x); y = int(y)
+        board[x-1][y-1] = c
+    return board
 
-
-
+def splitBoard(n,board) :
+    rooks = [['.'] * n for x in range(n) ]
+    bishops = [['.'] * n for x in range(n) ]
+    for i in range(n) :
+        for j in range(n) :
+            if board[i][j] == 'o' or board[i][j] == 'x' : placeRook(rooks,i,j,n)
+            if board[i][j] == 'o' or board[i][j] == '+' : placeBishop(bishops,i,j,n)
+    return rooks,bishops
     
 if __name__ == "__main__" :
     IN = myin()
     t, = IN.ints()
     for tt in range(1,t+1) :
-        n,k = IN.ints()
-
-        ## Do full tiers
-        amts = [n,n+1]
-        cnts = [1,0]
-        tiercnt = 1
-        while k > tiercnt :
-            ## two cases, amt[0] is even, and amt[0] is odd
-            if amts[0] % 2 == 0 :
-                newamt1 = amts[0]//2 - 1
-                newamt2 = newamt1 + 1
-                newcnt1 = cnts[0]
-                newcnt2 = cnts[0] + 2 * cnts[1]
-                amts = [newamt1,newamt2]; cnts = [newcnt1,newcnt2]
-            else :
-                newamt1 = amts[0]//2
-                newamt2 = newamt1 + 1
-                newcnt1 = 2 * cnts[0] + cnts[1]
-                newcnt2 = cnts[1]
-                amts = [newamt1,newamt2]; cnts = [newcnt1,newcnt2]
-            k -= tiercnt
-            tiercnt *= 2
-
-        mymin,mymax = 0,0        
-        if k <= cnts[1] :
-            mymin = (amts[1]-1)//2; mymax = amts[1] - 1 - mymin
-        else :
-            mymin = (amts[0]-1)//2; mymax = amts[0] - 1 - mymin
-
-        print("Case #%d: %d %d" % (tt,mymax, mymin))
-
+        n,m = IN.ints()
+        oldboard = getBoard(n,m,IN)
+        rooks,bishops = splitBoard(n,oldboard)
+        doRooks(n,rooks)
+        doBishops(n,bishops)
+        newboard = combineBishopsAndRooks(n,rooks,bishops)
+        score,subs = scoreBoard(n,oldboard,newboard)
+        print("Case #%d: %d %d" % (tt, score, len(subs)))
+        for c,row,col in subs : print("%s %d %d" % (c,row,col))
