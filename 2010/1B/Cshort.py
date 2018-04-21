@@ -25,7 +25,7 @@ class myin(object) :
 ## Let C(n,r) = the number of combinations of n things taking r at a time
 ## 2) P(n,i) = sum_{k=1}^{i-1} P(i,k) * C(n-i-1,i-k-1)  ## C(n-i-1,i-k-1) represents the number of ways to choose the elements between n and i
 
-maxn = 500
+maxn = 25
 nCrdata = [[0] * (maxn+1) for x in range(maxn+1)]
 dp      = [[0] * (maxn+1) for x in range(maxn+1)]
 answers = [0] * (maxn+1)
