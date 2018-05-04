@@ -1,6 +1,9 @@
 import sys
 import math
 import collections
+import copy
+from operator import itemgetter
+import fractions
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -17,17 +20,81 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
+def parseEvents(n,cars) :
+    mycars = copy.deepcopy(cars)
+    mycars.sort(key=itemgetter(3,0,2,1))
+    events = []
+    dependencies = collections.defaultdict(set)
+    assignment = [0] * n
+    for i in range(n) :
+        (c2,lr2,s2,p2) = mycars[i]
+        for j in range(i) :
+            (c1,lr1,s1,p1) = mycars[j]
+            if p2 >= p1 + 5 and s2 >= s1 :
+                continue
+            elif p2 >= p1 + 5 :
+                t1 = fractions.Fraction(p2-p1-5,s1-s2)
+                t2 = fractions.Fraction(p2-p1+5,s1-s2)
+                events.append( (t1,"overlap",c1,c2) )
+                events.append( (t2,"clear",c1,c2) )
+            else : ## p2 < p1 + 5 
+                dependencies[c1].add(c2)
+                dependencies[c2].add(c1)
+                assignment[c1] = 1e9 if lr1 == 'R' else -1e9
+                assignment[c2] = 1e9 if lr2 == 'R' else -1e9
+                if s1 > s2 :
+                    t2 = fractions.Fraction(p2-p1+5,s1-s2)
+                    events.append( (t2,"clear",c1,c2) )
+                elif s2 > s1 :
+                    t2 = fractions.Fraction(p1-p2+5,s2-s1)
+                    events.append( (t2,"clear",c1,c2) )
+    events.sort()
+    #for e in events : print(e)
+    return events,dependencies,assignment    
+
+def merge(n,assignment,bigger,smaller) :
+    for i in range(n) :
+        if assignment[i] == smaller : assignment[i] = bigger
+        if assignment[i] == -smaller : assignment[i] = -bigger
+
 def solve(inp) :
-    return 0
+    (n,cars) = inp
+    events,dependencies,assignment = parseEvents(n,cars)
+    cursor = 1
+    for e in events :
+        (t,typ,c1,c2) = e
+        if typ == "overlap" :
+            dependencies[c1].add(c2)
+            dependencies[c2].add(c1)
+            if assignment[c1] == 0 and assignment[c2] == 0 :
+                assignment[c1] = cursor
+                assignment[c2] = -cursor
+                cursor += 1
+            elif assignment[c1] == 0 :
+                assignment[c1] = -assignment[c2]
+            elif assignment[c2] == 0 :
+                assignment[c2] = -assignment[c1]
+            elif assignment[c1] == assignment[c2] :
+                return "%.8f" % float(t)
+            elif assignment[c1] == -assignment[c2] :
+                continue
+            else :
+                if abs(assignment[c1]) > abs(assignment[c2]): merge(n,assignment,assignment[c1],-assignment[c2])
+                else                                        : merge(n,assignment,assignment[c2],-assignment[c1])
+        else :
+            dependencies[c1].remove(c2)
+            dependencies[c2].remove(c1)
+            if not dependencies[c1] : assignment[c1] = 0
+            if not dependencies[c2] : assignment[c2] = 0
+    return "Possible"
 
 def getInputs(IN) :
-    p,w = IN.ints()
-    wh = []
-    edgestrs = IN.input().rstrip().split()
-    for e in edgestrs :
-        b = tuple(int(x) for x in e.split(','))
-        wh.append(b)
-    return (p,w,wh)    
+    n = int(IN.input())
+    cars = []
+    for x in range(n) :
+        a,b,c = IN.input().rstrip().split()
+        cars.append( (x,a,int(b),int(c)) )
+    return (n,cars)
 
 if __name__ == "__main__" :
     IN = myin()
