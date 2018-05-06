@@ -1,5 +1,14 @@
-import sys
+import collections
+import functools
+import heapq
+import itertools
 import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
@@ -17,13 +26,45 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-import heapq
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
 class minheap(object) :
     def __init__(self) : self.h = []
     def push(self,a)   : heapq.heappush(self.h,a)
     def pop(self)      : return heapq.heappop(self.h)
     def top(self)      : return self.h[0]
     def empty(self)    : return False if self.h else True
+
+def getInputs(IN) :
+    n,m = IN.ints()
+    words   = [ IN.input().rstrip() for x in range(n) ]
+    letters = [ IN.input().rstrip() for x in range(m) ]
+    return (n,m,words,letters)
+
+def solve(inp) :
+    (n,m,words,letters) = inp
+    warr = splitWordsByLength(n,words)
+    arr = []
+    for l in letters :
+        ans = solveProblem(warr,l,words)
+        arr.append(ans)
+    return " ".join(arr)
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
 def processLetter(mh,larr,s,lidx,wl) :
     ## Look for the next letter in the first word
@@ -71,35 +112,6 @@ def splitWordsByLength(n,words) :
         ans.append(d[k])
     return ans
 
-def solve(inp) :
-    (n,m,words,letters) = inp
-    warr = splitWordsByLength(n,words)
-    arr = []
-    for l in letters :
-        ans = solveProblem(warr,l,words)
-        arr.append(ans)
-    return " ".join(arr)
-
-def getInputs(IN) :
-    n,m = IN.ints()
-    words   = [ IN.input().rstrip() for x in range(n) ]
-    letters = [ IN.input().rstrip() for x in range(m) ]
-    return (n,m,words,letters)
-
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-
-    ## Non-multithreaded case
-    if (False) : 
-        for tt,i in enumerate(inputs,1) :
-            ans = solve(i)
-            print("Case #%d: %s" % (tt,ans))
-
-    ## Multithreaded case
-    else :
-        from multiprocessing import Pool    
-        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
-        for tt,ans in enumerate(outputs,1) :
-            print("Case #%d: %s" % (tt,ans))
+    doit(multi=True)

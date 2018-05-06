@@ -1,6 +1,14 @@
-import sys
-import math
 import collections
+import functools
+import heapq
+import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
@@ -18,6 +26,26 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    n = int(IN.input())
+    c = tuple(IN.ints())
+    return (n,c)
+
 def solve(inp) :
     (n,c) = inp
     xor = 0
@@ -26,15 +54,9 @@ def solve(inp) :
     sc = sorted(c)
     return str(sum(c)-sc[0])
 
-def getInputs(IN) :
-    n = int(IN.input())
-    c = tuple(IN.ints())
-    return (n,c)
-    
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-    for tt,i in enumerate(inputs,1) :
-        ans = solve(i)
-        print("Case #%d: %s" % (tt,ans))
+    doit()

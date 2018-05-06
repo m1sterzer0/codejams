@@ -1,6 +1,14 @@
-import sys
+import collections
+import functools
+import heapq
+import itertools
 import math
-from itertools import accumulate
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
@@ -18,6 +26,43 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    tt = tuple(IN.ints())
+    L,t,N,C = tt[0:4]
+    a = tt[4:]
+    return (L,t,N,C,a)
+
+def solve(inp) :
+    (L,t,N,C,a) = inp
+    d = [ a[x % C] for x in range(N) ]
+    cumd = list(itertools.accumulate(d))
+    threshold = next((i for i,v in enumerate(cumd) if 2 * v > t),None)
+    savings = [0] * N
+    if threshold is not None and threshold < N-1 : savings[threshold+1:] = d[threshold+1:]
+    if threshold is not None : savings[threshold] = cumd[threshold] - t//2
+    savings.sort(reverse=True)
+    savedTime = sum(savings[0:L])
+    ans = 2*cumd[-1] - savedTime
+    return "%d" % ans
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
 def check(t,c,d,p,v) :
     #print("DBG: Checking:",t)
     leftmax = -1e99
@@ -29,35 +74,6 @@ def check(t,c,d,p,v) :
         leftmax = rightloc
     return True 
 
-def solve(inp) :
-    (L,t,N,C,a) = inp
-    d = [ a[x % C] for x in range(N) ]
-    cumd = list(accumulate(d))
-    threshold = next((i for i,v in enumerate(cumd) if 2 * v > t),None)
-    savings = [0] * N
-    if threshold is not None and threshold < N-1 : savings[threshold+1:] = d[threshold+1:]
-    if threshold is not None : savings[threshold] = cumd[threshold] - t//2
-    savings.sort(reverse=True)
-    savedTime = sum(savings[0:L])
-    ans = 2*cumd[-1] - savedTime
-    return ans
-
-def getInputs(IN) :
-    tt = tuple(IN.ints())
-    L,t,N,C = tt[0:4]
-    a = tt[4:]
-    return (L,t,N,C,a)
-
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-    if (False) :
-        for tt,i in enumerate(inputs,1) :
-            ans = solve(i)
-            print("Case #%d: %d" % (tt,ans))
-    else :
-        from multiprocessing import Pool    
-        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
-        for tt,ans in enumerate(outputs,1) :
-            print("Case #%d: %d" % (tt,ans))
+    doit()

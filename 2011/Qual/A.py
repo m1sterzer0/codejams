@@ -1,5 +1,14 @@
-import sys
+import collections
+import functools
+import heapq
+import itertools
 import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
@@ -17,6 +26,28 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    tokens = list(IN.input().rstrip().split())
+    tasks = int(tokens[0])
+    robots = tokens[1::2]
+    buttons = [int(x) for x in tokens[2::2]]
+    return (tasks,robots,buttons)
+
 def solve(inp) :
     (tasks,robots,buttons) = (inp)
     lastPos = { "O" : 1, "B" : 1 }
@@ -26,19 +57,11 @@ def solve(inp) :
         candtime = lastTime[r] + abs(b-lastPos[r]) + 1
         if candtime < score + 1 : candtime = score + 1
         score = candtime; lastTime[r] = candtime; lastPos[r] = b
-    return score
+    return "%d" % score
 
-def getInputs(IN) :
-    tokens = list(IN.input().rstrip().split())
-    tasks = int(tokens[0])
-    robots = tokens[1::2]
-    buttons = [int(x) for x in tokens[2::2]]
-    return (tasks,robots,buttons)
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-    for tt,i in enumerate(inputs,1) :
-        ans = solve(i)
-        print("Case #%d: %d" % (tt,ans))
+    doit()

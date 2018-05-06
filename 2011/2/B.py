@@ -1,6 +1,15 @@
-import sys
-import math
 import collections
+import functools
+import heapq
+import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -16,6 +25,28 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    r,c,d = IN.ints()
+    mass = [0] * r ## placeholder
+    for i in range(r) :
+        mass[i] = [ d + int(x) for x in IN.input().rstrip() ]
+    return (r,c,d,mass)
 
 def solve(inp) :
     (r,c,d,mass) = inp
@@ -45,6 +76,9 @@ def solve(inp) :
                 return str(s)
     return "IMPOSSIBLE"
 
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
 def accumulate(r,c,arr) :
     ans = [ [0] * c for x in range(r) ]
     ans[0][0] = arr[0][0]
@@ -55,27 +89,6 @@ def accumulate(r,c,arr) :
             ans[i][j] = arr[i][j] + ans[i][j-1] + ans[i-1][j] - ans[i-1][j-1]
     return ans
 
-def getInputs(IN) :
-    r,c,d = IN.ints()
-    mass = [0] * r ## placeholder
-    for i in range(r) :
-        mass[i] = [ d + int(x) for x in IN.input().rstrip() ]
-    return (r,c,d,mass)
-
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-
-    ## Non-multithreaded case
-    if (False) : 
-        for tt,i in enumerate(inputs,1) :
-            ans = solve(i)
-            print("Case #%d: %s" % (tt,ans))
-
-    ## Multithreaded case
-    else :
-        from multiprocessing import Pool    
-        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
-        for tt,ans in enumerate(outputs,1) :
-            print("Case #%d: %s" % (tt,ans))
+    doit(multi=True)
