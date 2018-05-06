@@ -1,28 +1,66 @@
-import fileinput
-import sys
+import collections
+import functools
+import heapq
+import itertools
 import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
-class MyInput(object) :
-    def __init__(self,default_file=None) :
+class myin(object) :
+    def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
-        if (len(sys.argv) >= 2) : self.fh = open(sys.argv[1])
+        self.buffered = buffered
+        if(len(sys.argv) >= 2) : self.fh = open(sys.argv[1])
         elif default_file is not None : self.fh = open(default_file)
-    def getintline(self,n=-1) : 
-        ans = tuple(int(x) for x in self.fh.readline().rstrip().split())
-        if n > 0 and len(ans) != n : raise Exception('Expected %d ints but got %d in MyInput.getintline'%(n,len(ans)))
-        return ans
-    def getfloatline(self,n=-1) :
-        ans = tuple(float(x) for x in self.fh.readline().rstrip().split())
-        if n > 0 and len(ans) != n : raise Exception('Expected %d floats but got %d in MyInput.getfloatline'%(n,len(ans)))
-        return ans
-    def getstringline(self,n=-1) :
-        ans = tuple(self.fh.readline().rstrip().split())
-        if n > 0 and len(ans) != n : raise Exception('Expected %d strings but got %d in MyInput.getstringline'%(n,len(ans)))
-        return ans
-    def getbinline(self,n=-1) :
-        ans = tuple(int(x,2) for x in self.fh.readline().rstrip().split())
-        if n > 0 and len(ans) != n : raise Exception('Expected %d bins but got %d in MyInput.getbinline'%(n,len(ans)))
-        return ans
+        if (buffered) : self.lines = self.fh.readlines()
+        self.lineno = 0
+    def input(self) : 
+        if (self.buffered) : ans = self.lines[self.lineno]; self.lineno += 1; return ans
+        return self.fh.readline()
+    def strs(self) :   return self.input().rstrip().split()
+    def ints(self) :   return (int(x) for x in self.input().rstrip().split())
+    def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
+    def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    f = float(IN.input())
+    return (f,)
+
+def solve(inp) :
+    (f,) = inp
+    besty = 0.783653124333
+    maxfunc = evalWrap(1.0,besty)
+    if f == 1.000 : return doAns(0.0,0.0)
+    elif f < math.sqrt(2) :
+        xx = rootfind(lambda x: evalWrap(x,0.0)-f,0.00,1.00)
+        return doAns(xx,0.0)
+    elif f < maxfunc :
+        yy = rootfind(lambda x: evalWrap(1.0,x)-f,0.00,besty)
+        return doAns(1.0,yy)
+    else : return doAns(1.0,besty)
+
+def printOutput(tt,ans) :
+    print("Case #%d:" % tt)
+    for p in ans : print("%.15f %.15f %.15f" % (p[0],p[1],p[2]))
 
 def createRotationMatrix(theta,psi) :
     return [[math.cos(psi), -1*math.sin(psi)*math.cos(theta),  math.sin(psi)*math.sin(theta)],
@@ -106,33 +144,11 @@ def doAns(x,y) :
     points = [ (0.5,0.0,0.0), (0.0,0.5,0.0), (0.0,0.0,0.5) ]
     m = createRotationMatrix(x * math.pi/4.0,y * math.pi/4.0)
     rpoints = rotatePoints(m,points)
-    for p in rpoints : print("%.15f %.15f %.15f" % (p[0],p[1],p[2]))
+    return rpoints
 
 def evalWrap(x,y) : return evaluate(x*math.pi/4.0,y*math.pi/4.0)
 
+#####################################################################################################
+
 if __name__ == "__main__" :
-    ## Maximum value is 0.783653124333
-    #optimal = golden( lambda x : -1*evalWrap(1.0,x), 0.00, 1.00 )
-    #print("optimal x:%.12f  optimal value:%.12f" % (optimal,evalWrap(1.0,optimal)))
-    dbg = False
-    besty = 0.783653124333
-    maxfunc = evalWrap(1.0,besty)
-    myin = MyInput()
-    (t,) = myin.getintline(1)
-    for tt in range(t) :
-        print("Case #%d:" % (tt+1,))
-        (f,) = myin.getfloatline(1)
-        if f == 1.000 : 
-            if dbg: print((0.0,0.0))
-            doAns(0.0,0.0)
-        elif f < math.sqrt(2) :
-            xx = rootfind(lambda x: evalWrap(x,0.0)-f,0.00,1.00)
-            if dbg: print((xx,0.0))
-            doAns(xx,0.0)
-        elif f < maxfunc :
-            yy = rootfind(lambda x: evalWrap(1.0,x)-f,0.00,besty)
-            if dbg: print((1.0,yy))
-            doAns(1.0,yy)
-        else :
-            if dbg: print((1.0,besty))
-            doAns(1.0,besty)
+    doit()
