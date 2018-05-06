@@ -1,6 +1,14 @@
-import sys
+import collections
+import functools
+import heapq
 import math
-from operator import itemgetter
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -16,6 +24,21 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
 
 class unionFind(object) :
     def __init__(self) :
@@ -48,6 +71,11 @@ class unionFind(object) :
         px = self.find(x)
         return self.weight[px]
 
+def getInputs(IN) :
+    h,w = IN.ints()
+    topo = tuple(tuple(IN.ints()) for x in range(h))
+    return (h,w,topo)
+
 def solve(inp) :
     (h,w,topo) = inp
     uf = unionFind()
@@ -78,18 +106,11 @@ def solve(inp) :
             ans[y].append(parentMap[p])
     return ans
 
-def getInputs(IN) :
-    h,w = IN.ints()
-    topo = tuple(tuple(IN.ints()) for x in range(h))
-    return (h,w,topo)
+def printOutput(tt,ans) :
+    #print("Case #%d: %s" % (tt,ans))
+    print("Case #%d:" % (tt,))
+    for r in ans : print(" ".join(r))
 
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t)]
-
-    ## VERSION 1: Iteratively, to see progress
-    for tt,i in enumerate(inputs,1) :
-        ans = solve(i)
-        print("Case #%d:" % (tt,))
-        for r in ans : print(" ".join(r))
+    doit()

@@ -1,6 +1,14 @@
-import sys
-import math
+import collections
+import functools
 import heapq
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -17,6 +25,21 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
 class minheap(object) :
     def __init__(self) : self.h = []
     def push(self,a)   : heapq.heappush(self.h,a)
@@ -24,7 +47,20 @@ class minheap(object) :
     def top(self)      : return self.h[0]
     def empty(self)    : return False if self.h else True
 
-def doDijkstra(n,m,ss,ww,tt) :
+def getInputs(IN) :
+    n,m = IN.ints()
+    s = [ [0] * m for x in range(n)]
+    w = [ [0] * m for x in range(n)]
+    t = [ [0] * m for x in range(n)]
+    for i in range(n) :
+        buf = tuple(IN.ints())
+        s[i] = buf[0::3]
+        w[i] = buf[1::3]
+        t[i] = buf[2::3]
+    return (n,m,s,w,t)
+
+def solve(inp) :
+    (n,m,ss,ww,tt) = inp
     h = minheap(); d = {}; s = set()
     h.push((0,(n-1,0,'S','W')))
     while not h.empty():
@@ -37,7 +73,7 @@ def doDijkstra(n,m,ss,ww,tt) :
             dd = calcDist(node,c,dist,n,m,ss,ww,tt)
             #print("DEBUG DIJKSTRA:",c,dd)
             h.push((dd,c))
-    return d[(0,m-1,'N','E')]
+    return "%d" % d[(0,m-1,'N','E')]
 
 def calcDist(node,c,dist,n,m,s,w,t) :
     #print("DEBUG calcDist",node,c,dist,n,m,s,w,t)
@@ -74,21 +110,10 @@ def getConnections(node,n,m) :
         if x != m-1 : connections.append((y,x+1,ns,'W'))
     return connections
 
-if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    for tt in range(1,t+1) :
-        n,m = IN.ints()
-        s = [ [0] * m for x in range(n)]
-        w = [ [0] * m for x in range(n)]
-        t = [ [0] * m for x in range(n)]
-        for i in range(n) :
-            buf = tuple(IN.ints())
-            for j in range(m) :
-                s[i][j] = buf[3*j]
-                w[i][j] = buf[3*j+1]
-                t[i][j] = buf[3*j+2]
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
-        ## Dijkstra
-        ans = doDijkstra(n,m,s,w,t)
-        print("Case #%d: %d" % (tt,ans))
+#####################################################################################################
+if __name__ == "__main__" :
+    doit()
+

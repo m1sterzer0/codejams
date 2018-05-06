@@ -1,5 +1,14 @@
-import sys
+import collections
+import functools
+import heapq
 import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -15,6 +24,21 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
 
 def nCr(n,r) :
     f = math.factorial
@@ -32,21 +56,25 @@ def p(c,n,missing,found) :
     if n - found > c - missing : return 0
     return 1.0 * nCr(missing,found) * nCr(c-missing,n - found) / nCr(c,n)
 
-if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    for tt in range(1,t+1) :
-        c,n = IN.ints()
+def getInputs(IN) :
+    c,n = IN.ints()
+    return (c,n)
 
-        ## E(1) = 1 + P(c,n,1,0) * E(1) --> E(1) = (1) / (1 - P(c,n,1,0))
-        ## E(2) = 1 + P(c,n,2,1) * E(1) + P(c,n,2,0) * E(2) = (1 + P(c,n,2,1) * E(1)) / (1 - P(c,n,2,0))
-        ## E(3) = 1 + P(C,n,3,2) * E(1) + P(c,n,3,1) * E(2) + P(c,n,3,0) * E(3) = (1 + P(c,n,3,2) * E(1)) 
-        e = [0] * (c+1)
-        for missing in range(1,c+1) :
-            num = 1
-            for found in range(1,missing) :
-                num += p(c,n,missing,found) * e[missing-found]
-            denom = 1.0 - p(c,n,missing,0)
-            e[missing] = num / denom
-        print("Case #%d: %.8f" % (tt,e[c]))
-        
+def solve(inp) :
+    (c,n) = inp
+    e = [0] * (c+1)
+    for missing in range(1,c+1) :
+        num = 1
+        for found in range(1,missing) :
+            num += p(c,n,missing,found) * e[missing-found]
+        denom = 1.0 - p(c,n,missing,0)
+        e[missing] = num / denom
+    return "%.8f" % e[c]
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
+#####################################################################################################
+if __name__ == "__main__" :
+    doit()
+

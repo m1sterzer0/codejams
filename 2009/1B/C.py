@@ -1,6 +1,14 @@
-import sys
+import collections
+import functools
+import heapq
 import math
-from operator import itemgetter
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -17,12 +25,46 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    w,q = IN.ints()
+    sq = parseSquare(w,IN)
+    qlist = tuple(IN.ints())
+    return (w,q,sq,qlist)
+
 def parseSquare(w,IN) :
     sq = [0] * w
     for i in range(w) :
         s, = IN.strs()
         sq[i] = [ int(x) if x in "0123456789" else x for x in s ]
     return sq
+
+def solve(inp) :
+    (w,q,sq,qlist) = inp
+    ans = []
+    posarr,negarr,maxpos,maxneg,neighbors = analyzeSquare(w,sq)
+    for qq in qlist :
+        lans = doQuery(sq,qq,posarr,negarr,maxpos,maxneg)
+        ans.append(lans)
+    return ans
+
+def printOutput(tt,ans) :
+    print("Case #%d:" % tt)
+    for a in ans : print(a)
 
 def analyzeSquare(w,sq) :
     posarr = [ [False] * w for x in range(w) ]
@@ -113,15 +155,6 @@ def doQuery(sq,target,posarr,negarr,maxpos,maxneg) :
                 visited.add((ni,nj,nval))
                 queue.append((ni,nj,nval,nlevel,nresstr))
 
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    for tt in range(1,t+1) :
-        w,q = IN.ints()
-        sq = parseSquare(w,IN)
-        qlist = IN.ints()
-        posarr,negarr,maxpos,maxneg,neighbors = analyzeSquare(w,sq)
-        print("Case #%d:" % tt)
-        for qq in qlist :
-            ans = doQuery(sq,qq,posarr,negarr,maxpos,maxneg)
-            print(ans)
+    doit(multi=True)

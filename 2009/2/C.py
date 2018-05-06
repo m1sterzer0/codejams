@@ -1,6 +1,15 @@
-import sys
+import collections
+import functools
+import heapq
+import itertools
 import math
-from operator import itemgetter
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -16,6 +25,21 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
 
 class graph(object) :
     def __init__(self,nodes,edges,bidir=False,weighted=True) :
@@ -78,6 +102,11 @@ def maxBipartiteMatching(leftNodes,rightNodes,edges) :
         if gr.g[x][y] == 0 : pairs.append( (x,y) )
     return flow,pairs 
 
+def getInputs(IN) :
+    n,k = IN.ints()
+    charts = tuple(tuple(IN.ints()) for x in range(n))
+    return (n,k,charts)
+
 def solve(inp) :
     (n,k,charts) = inp
     ## Treat this as a partially ordered set
@@ -94,32 +123,12 @@ def solve(inp) :
             if (ans) : 
                 edges.append((ii,n+jj))
     matches,_ = maxBipartiteMatching(list(range(n)), list(range(n,2*n)), edges)
-    return n - matches ## Each match saves a new chart
+    ans =  n - matches ## Each match saves a new chart
+    return "%d" % ans
+ 
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
-def getInputs(IN) :
-    n,k = IN.ints()
-    charts = tuple(tuple(IN.ints()) for x in range(n))
-    return (n,k,charts)
-
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t)]
-
-    ## VERSION 1: Iteratively, to see progress
-    for tt,i in enumerate(inputs,1) :
-        val = solve(i)
-        print("Case #%d: %d" % (tt,val))
-
-    ## VERSION 2: With map (enabling parallelism) 
-    #parallel = False
-    #if parallel:
-    #    with Pool(processes=32) as pool: outputs = pool.map(solve,inputs)
-    #else :
-    #    outputs = map(solve,inputs)
-    #for tt,val in enumerate(outputs,1) :
-    #    print("Case #%d: %d" % (tt,val))
-
-
-
-
+    doit()

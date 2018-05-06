@@ -1,5 +1,14 @@
-import sys
+import collections
+import functools
+import heapq
 import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -16,6 +25,36 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    s, = IN.strs()
+    return (s,)
+
+def solve(inp) :
+    (s,) = inp
+    dlist = [0] + list(int(x) for x in s)
+    next_permutation(dlist)
+    if dlist[0] == 0 : dlist.pop(0) 
+    ans = "".join(str(x) for x in dlist)
+    return ans
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
 def next_permutation(a) :
     for i in range(len(a)-2,-1,-1) :
         if a[i] < a[i+1] :
@@ -26,13 +65,6 @@ def next_permutation(a) :
                     return True
     return False
 
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    for tt in range(1,t+1) :
-        s, = IN.strs()
-        dlist = [0] + list(int(x) for x in s)
-        next_permutation(dlist)
-        if dlist[0] == 0 : dlist.pop(0) 
-        ans = "".join(str(x) for x in dlist)
-        print("Case #%d: %s" % (tt,ans))
+    doit()

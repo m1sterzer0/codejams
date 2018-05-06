@@ -1,7 +1,15 @@
-import sys
-import math
-from operator import itemgetter
+import collections
+import functools
+import heapq
 import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -17,6 +25,21 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
 
 class unionFind(object) :
     def __init__(self) :
@@ -49,41 +72,42 @@ class unionFind(object) :
         px = self.find(x)
         return self.weight[px]
 
+def getInputs(IN) :
+    p,_ = IN.ints()
+    qarr = tuple(IN.ints())
+    return (p,qarr)
+
+def solve(inp) :
+    (p,qarr) = (inp)
+    sb = [0] + [1] * p
+    for q in qarr : sb[q] = 0
+    globans = 1e99
+    for qa in itertools.permutations(qarr) :
+        uf = unionFind()
+        for i in range(1,p+1) :
+            if sb[i] == 1 :
+                if sb[i-1] == 0 : parent = i
+                uf.insert(i)
+                if i != parent : uf.union(i,parent)
+        ans = 0
+        for q in qa :
+            uf.insert(q)
+            if q-1 in uf.parent :
+                node = uf.find(q-1)
+                ans += uf.nodeSize(q-1)
+                uf.union(q,q-1)
+            if q+1 in uf.parent :
+                node = uf.find(q-1)
+                ans += uf.nodeSize(q+1)
+                uf.union(q,q+1)
+        if (ans < globans) :
+            globans = ans
+            best = qa
+    return "%d" % globans
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    for tt in range(1,t+1) :
-        p,_ = IN.ints()
-        qarr = tuple(IN.ints())
-
-        ## Key is to do this in reverse order
-        ## qarr = qarr[::-1]
-        sb = [0] + [1] * p
-        for q in qarr : sb[q] = 0
-
-        globans = 1e99
-        for qa in itertools.permutations(qarr) :
-            uf = unionFind()
-            for i in range(1,p+1) :
-                if sb[i] == 1 :
-                    if sb[i-1] == 0 : parent = i
-                    uf.insert(i)
-                    if i != parent : uf.union(i,parent)
-    
-            ans = 0
-            for q in qa :
-                uf.insert(q)
-                if q-1 in uf.parent :
-                    node = uf.find(q-1)
-                    ans += uf.nodeSize(q-1)
-                    uf.union(q,q-1)
-                if q+1 in uf.parent :
-                    node = uf.find(q-1)
-                    ans += uf.nodeSize(q+1)
-                    uf.union(q,q+1)
-            if (ans < globans) :
-                globans = ans
-                best = qa
-
-        print("Case #%d: %d" % (tt,globans))
-            
+    doit()

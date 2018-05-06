@@ -17,7 +17,7 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-
+## Non-standard
 if __name__ == "__main__" :
     IN = myin()
     l,d,n = IN.ints()

@@ -1,8 +1,15 @@
-import sys
-import math
-from operator import itemgetter
-from multiprocessing import Pool
+import collections
+import functools
+import heapq
 import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -18,6 +25,43 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    n, = IN.ints()
+    data = []
+    for _ in range(n) : data.extend(list(IN.ints()))
+    xs = data[0::3]
+    ys = data[1::3]
+    rs = data[2::3]
+    return (n,xs,ys,rs)
+
+def solve(a) :
+    (n,xs,ys,rs) = a
+    if n == 1 : return "%.8f" % rs[0]
+    l = max(rs); r = 500 * math.sqrt(2) + l + 1
+    while (r-l > 4e-6) :
+        m = (r+l) * 0.5
+        if good(n,xs,ys,rs,m) : r = m
+        else                  : l = m
+    return "%.8f" % (0.5*(r+l))
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
 def getCenter(x1,y1,r1,x2,y2,r2) :
     d = math.sqrt((x1-x2)**2+(y1-y2)**2)
@@ -38,14 +82,6 @@ def findCenters(xs,ys,rs,n,radius) :
             lans = getCenter(xs[i],ys[i],radius-rs[i],xs[j],ys[j],radius-rs[j])
             ans.extend(lans)
     return ans
-
-##def check(c1,c2,r,xarr,yarr,rarr) :
-##    r *= (1+1e-10) ## For numerical accuracy, since we set the r exactly to be tangent to some of these
-##    for i in range(len(xarr)) :
-##        if (r-rarr[i])**2 + 1e-10 >= (c1[0]-xarr[i])**2 + (c1[1]-yarr[i])**2 : continue
-##        if (r-rarr[i])**2 + 1e-10 >= (c2[0]-xarr[i])**2 + (c2[1]-yarr[i])**2 : continue
-##        return False
-##    return True
 
 def betterCheck(centers,r,xarr,yarr,rarr) :
     n = len(xarr)
@@ -69,33 +105,14 @@ def good(n,xs,ys,rs,radius) :
     if betterCheck(centers,radius,xs,ys,rs) : return True
     return False
 
-def solve(a) :
-    (n,xs,ys,rs) = a
-    if n == 1 : return rs[0]
-    l = max(rs); r = 500 * math.sqrt(2) + l + 1
-    while (r-l > 4e-6) :
-        m = (r+l) * 0.5
-        if good(n,xs,ys,rs,m) : r = m
-        else                  : l = m
-    return (r+l)*0.5
+##def check(c1,c2,r,xarr,yarr,rarr) :
+##    r *= (1+1e-10) ## For numerical accuracy, since we set the r exactly to be tangent to some of these
+##    for i in range(len(xarr)) :
+##        if (r-rarr[i])**2 + 1e-10 >= (c1[0]-xarr[i])**2 + (c1[1]-yarr[i])**2 : continue
+##        if (r-rarr[i])**2 + 1e-10 >= (c2[0]-xarr[i])**2 + (c2[1]-yarr[i])**2 : continue
+##        return False
+##    return True
 
-def getInputs(t,IN) :
-    inputs = []
-    for _ in range(t) :
-        n, = IN.ints()
-        data = []
-        for _ in range(n) : data.extend(list(IN.ints()))
-        xs = data[0::3]
-        ys = data[1::3]
-        rs = data[2::3]
-        inputs.append( (n,xs,ys,rs) )
-    return inputs
-
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = getInputs(t,IN)
-    #outputs = map(solve,inputs)
-    with Pool(processes=30) as pool: outputs = pool.map(solve,inputs)
-    for tt,val in enumerate(outputs,1) :
-        print("Case #%d: %.8f" % (tt,val))
+    doit(multi=True)

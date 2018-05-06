@@ -1,5 +1,14 @@
-import sys
+import collections
+import functools
+import heapq
 import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -15,6 +24,46 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    l = int(IN.input())
+    lines = [ tuple(IN.input().rstrip().lstrip().split()) for i in range(l) ]
+    a = int(IN.input())
+    animals = [ tuple(IN.strs()) for i in range(a) ]
+    return (l,lines,a,animals)
+
+def solve(inp) :
+    (l,lines,a,animals) = inp
+    tokens = []
+    for s in lines:
+        for ss in s :
+            t = tokenize(ss)
+            tokens.extend(t)
+    tr,_ = parseTree(tokens,0)
+    ans = []
+    for animal in animals :
+        lans = evalAnimal(tr,animal, 1.0)
+        ans.append( "%.8f" % lans)
+    return ans
+
+def printOutput(tt,ans) :
+    print("Case #%d:" % tt)
+    for a in ans : print(a)
 
 def tokenize(s) :
     prefix,suffix = [],[]
@@ -46,22 +95,6 @@ def evalAnimal(dtree,animal, p) :
         else                   : p = evalAnimal(dtree[3], animal, p)
         return p
 
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    for tt in range(1,t+1) :
-        l, = IN.ints()
-        tokens = []
-        for i in range(l) :
-            s = IN.input().rstrip().lstrip().split()
-            for ss in s :
-                t = tokenize(ss)
-                tokens.extend(t)
-        tr,_ = parseTree(tokens,0)
-        a, = IN.ints()
-        print("Case #%d:" % tt)
-
-        for i in range(a) :
-            animal = tuple(IN.strs())
-            ans = evalAnimal(tr,animal, 1.0)
-            print("%.8f" % ans)
+    doit()
