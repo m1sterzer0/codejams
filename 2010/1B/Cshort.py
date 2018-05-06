@@ -1,7 +1,15 @@
-import sys
-import math
+import collections
 import functools
-from operator import itemgetter
+import heapq
+import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -18,6 +26,20 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
 
 ## The major recurrances
 ## 1) #(pure subsets of {2..n} with n pure) = sum_{i=1)^{n-1} #(pure subsets of {2..n} with n pure of order i)
@@ -55,18 +77,18 @@ def prepWork() :
 
 def nCr(n,r) : return 0 if n < r else nCrdata[n][r]
     
-def solve(inp) :
-    n = inp
-    return answers[n]
-
 def getInputs(IN) :
     return int(IN.input())
 
+def solve(inp) :
+    n = inp
+    return "%d" % answers[n]
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
     prepWork()
-    inputs = [ getInputs(IN) for x in range(t)]
-    for tt,i in enumerate(inputs,1) :
-        ans = solve(i)
-        print("Case #%d: %d" % (tt,ans))
+    doit()
+

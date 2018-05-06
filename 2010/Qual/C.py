@@ -1,6 +1,15 @@
-import sys
+import collections
+import functools
+import heapq
+import itertools
 import math
-import fractions
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -17,13 +26,25 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-def rcSolve(n,gs,k,idx) :
-    riders = 0
-    for i in range(n) :
-        nextidx = (idx+i) % n
-        if riders + gs[nextidx] <= k : riders += gs[nextidx]
-        else                         : return riders,nextidx
-    return riders,idx
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    r,k,n = IN.ints()
+    gs = tuple(IN.ints())
+    return (r,k,n,gs)
 
 def solve(inp) :
     (r,k,n,gs) = inp
@@ -45,15 +66,17 @@ def solve(inp) :
             remainderFlag = True
     return "%d" % riders
 
-def getInputs(IN) :
-    r,k,n = IN.ints()
-    gs = tuple(IN.ints())
-    return (r,k,n,gs)
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
+def rcSolve(n,gs,k,idx) :
+    riders = 0
+    for i in range(n) :
+        nextidx = (idx+i) % n
+        if riders + gs[nextidx] <= k : riders += gs[nextidx]
+        else                         : return riders,nextidx
+    return riders,idx
+
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-    for tt,i in enumerate(inputs,1) :
-        ans = solve(i)
-        print("Case #%d: %s" % (tt,ans))
+    doit()

@@ -1,7 +1,15 @@
-import sys
-import math
+import collections
+import functools
 import heapq
-from operator import itemgetter
+import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -17,6 +25,40 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    r = int(IN.input())
+    rarr = [ tuple(IN.ints()) for x in range(r) ]
+    return (r,rarr)
+
+def solve(inp) :
+    (r,rarr) = inp
+    nodes,edges = createGraph(r,rarr)
+    ccon = getConnectedComponents(r,rarr,nodes,edges)
+    best = 1
+    for cc in ccon :
+        minDiag,maxx,maxy = getCCStats(cc) 
+        lifetime = maxx + maxy - minDiag + 1
+        best = max(best,lifetime)
+    return "%d" % best
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
 def createGraph(r,rarr) :
     edges = []
@@ -65,27 +107,6 @@ def getCCStats(cc) :
     maxys = list(y2    for (x1,y1,x2,y2) in cc)
     return min(diags),max(maxxs),max(maxys)
 
-def solve(inp) :
-    (r,rarr) = inp
-    nodes,edges = createGraph(r,rarr)
-    ccon = getConnectedComponents(r,rarr,nodes,edges)
-    best = 1
-    for cc in ccon :
-        minDiag,maxx,maxy = getCCStats(cc) 
-        lifetime = maxx + maxy - minDiag + 1
-        best = max(best,lifetime)
-    return best
-
-def getInputs(IN) :
-    r = int(IN.input())
-    rarr = [ tuple(IN.ints()) for x in range(r) ]
-    return (r,rarr)
-
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-
-    for tt,i in enumerate(inputs,1) :
-        ans = solve(i)
-        print("Case #%d: %d" % (tt,ans))
+    doit()

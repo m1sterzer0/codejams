@@ -1,6 +1,15 @@
-import sys
+import collections
+import functools
+import heapq
+import itertools
 import math
-from operator import itemgetter
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -17,14 +26,26 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-def splitDirs(s) :
-    ans = []
-    x = ""
-    a = s[1:].split('/')
-    for aa in a :
-        x = x + '/' + aa
-        ans.append(x)
-    return ans
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
+
+def getInputs(IN) :
+    n,m = IN.ints()
+    existing = list(IN.input().rstrip() for x in range(n))
+    newdirs  = list(IN.input().rstrip() for x in range(m))
+    return (n,m,existing,newdirs)
 
 def solve(inp) :
     (n,m,existing,newdirs) = inp
@@ -37,19 +58,20 @@ def solve(inp) :
         a = splitDirs(s)
         for aa in a :
             if aa not in d : ans += 1; d.add(aa)
+    return "%d" % ans
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
+def splitDirs(s) :
+    ans = []
+    x = ""
+    a = s[1:].split('/')
+    for aa in a :
+        x = x + '/' + aa
+        ans.append(x)
     return ans
 
-def getInputs(IN) :
-    n,m = IN.ints()
-    existing = list(IN.input().rstrip() for x in range(n))
-    newdirs  = list(IN.input().rstrip() for x in range(m))
-    return (n,m,existing,newdirs)
-
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t)]
-
-    for tt,i in enumerate(inputs,1) :
-        ans = solve(i)
-        print("Case #%d: %d" % (tt,ans))
+    doit()

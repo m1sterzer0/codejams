@@ -1,6 +1,15 @@
-import sys
+import collections
+import functools
+import heapq
+import itertools
 import math
-import fractions
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -17,24 +26,38 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-def solve(inp) :
-    (n,numsec) = inp
-    base = min(numsec)
-    g = abs(numsec[0] - base)
-    for i in range(1,n) : g = fractions.gcd(g,numsec[i]-base)
-    t = g - (numsec[0] % g)
-    if t == g : t = 0
-    return "%d" % t
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
 
 def getInputs(IN) :
     numsec = list(IN.ints())
     n = numsec[0]; numsec.pop(0)
     return (n,numsec) 
 
+def solve(inp) :
+    (n,numsec) = inp
+    base = min(numsec)
+    g = abs(numsec[0] - base)
+    for i in range(1,n) : g = gcd(g,numsec[i]-base)
+    t = g - (numsec[0] % g)
+    if t == g : t = 0
+    return "%d" % t
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-    for tt,i in enumerate(inputs,1) :
-        ans = solve(i)
-        print("Case #%d: %s" % (tt,ans))
+    doit()

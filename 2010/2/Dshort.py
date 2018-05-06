@@ -1,7 +1,15 @@
-import sys
-import math
+import collections
+import functools
 import heapq
-from operator import itemgetter
+import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -17,6 +25,21 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
 
 class pt(object) :
     def __init__(self,x=0,y=0) : self.x = x; self.y = y
@@ -51,6 +74,21 @@ class pt(object) :
         z = pt.add(a1,d) 
         return z
 
+def getInputs(IN) :
+    n,m = IN.ints()
+    ps = [ tuple(IN.ints()) for x in range(n) ]
+    qs = [ tuple(IN.ints()) for x in range(m) ]
+    return (n,m,ps,qs)
+
+def solve(inp) :
+    (n,m,ps,qs) = inp
+    areas = [solvecase2(n,ps,x) for x in qs]
+    answers = [ "%.8f" % x for x in areas ]
+    return " ".join(answers)
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
 def calcRegionArea(r,d) :
     cosTheta = (2 * r * r - d * d) / (2 * r * r) 
     theta    = math.acos(cosTheta)
@@ -83,22 +121,7 @@ def solvecase2(n,ps,q) :
     else                         : ans = math.pi * r1 * r1 - reg1 + reg0
     return ans
 
-def solve(inp) :
-    (n,m,ps,qs) = inp
-    areas = [solvecase2(n,ps,x) for x in qs]
-    answers = [ "%.8f" % x for x in areas ]
-    return " ".join(answers)
-
-def getInputs(IN) :
-    n,m = IN.ints()
-    ps = [ tuple(IN.ints()) for x in range(n) ]
-    qs = [ tuple(IN.ints()) for x in range(m) ]
-    return (n,m,ps,qs)
-
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-    for tt,i in enumerate(inputs,1) :
-        ans = solve(i)
-        print("Case #%d: %s" % (tt,ans))
+    doit()
+
