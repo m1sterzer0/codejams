@@ -1,8 +1,14 @@
-import sys
-import math
 import collections
+import functools
 import heapq
-from operator import itemgetter
+import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
@@ -19,6 +25,21 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
 
 class MaxHeapObj(object):
   def __init__(self,val): self.val = val
@@ -40,6 +61,13 @@ class MaxHeap(MinHeap):
   def pop(self): return heapq.heappop(self.h).val
   def top(self) : return self.h[0].val
 
+def getInputs(IN) :
+    n = int(IN.input())
+    levels = []
+    for i in range(1,n+1) :
+        a,b = IN.ints()
+        levels.append( (a,b) )
+    return (n,levels)  
 
 def solve(inp) :
     (n,levels) = inp
@@ -79,28 +107,9 @@ def solve(inp) :
     if score == 2 * n : return "%d" % levels
     else : return "Too Bad"
 
-def getInputs(IN) :
-    n = int(IN.input())
-    levels = []
-    for i in range(1,n+1) :
-        a,b = IN.ints()
-        levels.append( (a,b) )
-    return (n,levels)  
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-
-    ## Non-multithreaded case
-    if (True) : 
-        for tt,i in enumerate(inputs,1) :
-            ans = solve(i)
-            print("Case #%d: %s" % (tt,ans))
-
-    ## Multithreaded case
-    else :
-        from multiprocessing import Pool    
-        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
-        for tt,ans in enumerate(outputs,1) :
-            print("Case #%d: %s" % (tt,ans))
+    doit()

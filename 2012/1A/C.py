@@ -1,9 +1,15 @@
-import sys
-import math
 import collections
-import copy
-from operator import itemgetter
-import fractions
+import functools
+import heapq
+import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
+
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
         self.fh = sys.stdin
@@ -20,42 +26,29 @@ class myin(object) :
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-def parseEvents(n,cars) :
-    mycars = copy.deepcopy(cars)
-    mycars.sort(key=itemgetter(3,0,2,1))
-    events = []
-    dependencies = collections.defaultdict(set)
-    assignment = [0] * n
-    for i in range(n) :
-        (c2,lr2,s2,p2) = mycars[i]
-        for j in range(i) :
-            (c1,lr1,s1,p1) = mycars[j]
-            if p2 >= p1 + 5 and s2 >= s1 :
-                continue
-            elif p2 >= p1 + 5 :
-                t1 = fractions.Fraction(p2-p1-5,s1-s2)
-                t2 = fractions.Fraction(p2-p1+5,s1-s2)
-                events.append( (t1,"overlap",c1,c2) )
-                events.append( (t2,"clear",c1,c2) )
-            else : ## p2 < p1 + 5 
-                dependencies[c1].add(c2)
-                dependencies[c2].add(c1)
-                assignment[c1] = 1e9 if lr1 == 'R' else -1e9
-                assignment[c2] = 1e9 if lr2 == 'R' else -1e9
-                if s1 > s2 :
-                    t2 = fractions.Fraction(p2-p1+5,s1-s2)
-                    events.append( (t2,"clear",c1,c2) )
-                elif s2 > s1 :
-                    t2 = fractions.Fraction(p1-p2+5,s2-s1)
-                    events.append( (t2,"clear",c1,c2) )
-    events.sort()
-    #for e in events : print(e)
-    return events,dependencies,assignment    
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
 
-def merge(n,assignment,bigger,smaller) :
-    for i in range(n) :
-        if assignment[i] == smaller : assignment[i] = bigger
-        if assignment[i] == -smaller : assignment[i] = -bigger
+#####################################################################################################
+import copy
+
+def getInputs(IN) :
+    n = int(IN.input())
+    cars = []
+    for x in range(n) :
+        a,b,c = IN.input().rstrip().split()
+        cars.append( (x,a,int(b),int(c)) )
+    return (n,cars)
 
 def solve(inp) :
     (n,cars) = inp
@@ -88,28 +81,46 @@ def solve(inp) :
             if not dependencies[c2] : assignment[c2] = 0
     return "Possible"
 
-def getInputs(IN) :
-    n = int(IN.input())
-    cars = []
-    for x in range(n) :
-        a,b,c = IN.input().rstrip().split()
-        cars.append( (x,a,int(b),int(c)) )
-    return (n,cars)
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
+def parseEvents(n,cars) :
+    mycars = copy.deepcopy(cars)
+    mycars.sort(key=itemgetter(3,0,2,1))
+    events = []
+    dependencies = collections.defaultdict(set)
+    assignment = [0] * n
+    for i in range(n) :
+        (c2,lr2,s2,p2) = mycars[i]
+        for j in range(i) :
+            (c1,lr1,s1,p1) = mycars[j]
+            if p2 >= p1 + 5 and s2 >= s1 :
+                continue
+            elif p2 >= p1 + 5 :
+                t1 = Fraction(p2-p1-5,s1-s2)
+                t2 = Fraction(p2-p1+5,s1-s2)
+                events.append( (t1,"overlap",c1,c2) )
+                events.append( (t2,"clear",c1,c2) )
+            else : ## p2 < p1 + 5 
+                dependencies[c1].add(c2)
+                dependencies[c2].add(c1)
+                assignment[c1] = 1e9 if lr1 == 'R' else -1e9
+                assignment[c2] = 1e9 if lr2 == 'R' else -1e9
+                if s1 > s2 :
+                    t2 = Fraction(p2-p1+5,s1-s2)
+                    events.append( (t2,"clear",c1,c2) )
+                elif s2 > s1 :
+                    t2 = Fraction(p1-p2+5,s2-s1)
+                    events.append( (t2,"clear",c1,c2) )
+    events.sort()
+    #for e in events : print(e)
+    return events,dependencies,assignment    
+
+def merge(n,assignment,bigger,smaller) :
+    for i in range(n) :
+        if assignment[i] == smaller : assignment[i] = bigger
+        if assignment[i] == -smaller : assignment[i] = -bigger
+
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-
-    ## Non-multithreaded case
-    if (True) : 
-        for tt,i in enumerate(inputs,1) :
-            ans = solve(i)
-            print("Case #%d: %s" % (tt,ans))
-
-    ## Multithreaded case
-    else :
-        from multiprocessing import Pool    
-        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
-        for tt,ans in enumerate(outputs,1) :
-            print("Case #%d: %s" % (tt,ans))
+    doit()

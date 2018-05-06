@@ -1,8 +1,14 @@
-import sys
-import math
 import collections
+import functools
 import heapq
-from operator import itemgetter
+import itertools
+import math
+import re
+import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
 class myin(object) :
     def __init__(self,default_file=None,buffered=False) :
@@ -19,6 +25,21 @@ class myin(object) :
     def ints(self) :   return (int(x) for x in self.input().rstrip().split())
     def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
     def floats(self) : return (float(x) for x in self.input().rstrip().split())
+
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
+
+#####################################################################################################
 
 class MaxHeapObj(object):
   def __init__(self,val): self.val = val
@@ -40,22 +61,12 @@ class MaxHeap(MinHeap):
   def pop(self): return heapq.heappop(self.h).val
   def top(self) : return self.h[0].val
 
-def getDist(i,j,dist,x,y,h,top,bot) :
-    if bot[i][j] > top[x][y] - 50 : return -1
-    if bot[x][y] > top[x][y] - 50 : return -1
-    if bot[x][y] > top[i][j] - 50 : return -1
-
-    wl = h - 10*dist
-    if wl <= top[x][y] - 50 :    ## Water is already low enough
-        cost = 0 if dist == 0 else 1 if wl >= bot[i][j] + 20 else 10
-
-    else : ## Need to wait for the water to drop
-        cost1 =  (wl - (top[x][y] - 50)) * 0.1
-        newwl = top[x][y] - 50
-        cost2 = 1 if newwl >= bot[i][j] + 20 else 10
-        cost = cost1+cost2 
-
-    return dist+cost 
+def getInputs(IN) :
+    h,n,m = IN.ints()
+    top = [0] * n; bot = [0] * n
+    for i in range(n) : top[i] = list(IN.ints())
+    for i in range(n) : bot[i] = list(IN.ints())
+    return (h,n,m,top,bot)
 
 def solve(inp) :
     (h,n,m,top,bot) = inp
@@ -77,27 +88,26 @@ def solve(inp) :
             if t >= 0 : minh.push( (t, (x,y)) )
     return "%.8f" % d[(n-1,m-1)]
 
-def getInputs(IN) :
-    h,n,m = IN.ints()
-    top = [0] * n; bot = [0] * n
-    for i in range(n) : top[i] = list(IN.ints())
-    for i in range(n) : bot[i] = list(IN.ints())
-    return (h,n,m,top,bot)
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
+def getDist(i,j,dist,x,y,h,top,bot) :
+    if bot[i][j] > top[x][y] - 50 : return -1
+    if bot[x][y] > top[x][y] - 50 : return -1
+    if bot[x][y] > top[i][j] - 50 : return -1
+
+    wl = h - 10*dist
+    if wl <= top[x][y] - 50 :    ## Water is already low enough
+        cost = 0 if dist == 0 else 1 if wl >= bot[i][j] + 20 else 10
+
+    else : ## Need to wait for the water to drop
+        cost1 =  (wl - (top[x][y] - 50)) * 0.1
+        newwl = top[x][y] - 50
+        cost2 = 1 if newwl >= bot[i][j] + 20 else 10
+        cost = cost1+cost2 
+
+    return dist+cost 
+
+#####################################################################################################
 if __name__ == "__main__" :
-    IN = myin()
-    t, = IN.ints()
-    inputs = [ getInputs(IN) for x in range(t) ]
-
-    ## Non-multithreaded case
-    if (True) : 
-        for tt,i in enumerate(inputs,1) :
-            ans = solve(i)
-            print("Case #%d: %s" % (tt,ans))
-
-    ## Multithreaded case
-    else :
-        from multiprocessing import Pool    
-        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
-        for tt,ans in enumerate(outputs,1) :
-            print("Case #%d: %s" % (tt,ans))
+    doit()
