@@ -42,37 +42,58 @@ def doit(fn=None,multi=False) :
 #####################################################################################################
 
 def getInputs(IN) :
-    r,b,c = IN.ints()
-    cashiers = [0] * c
-    for i in range(c) :
-        mi,si,pi = IN.ints()
-        cashiers[i] = (mi,si,pi)
-    return (r,b,c,cashiers)
+    n,p = IN.ints()
+    widths = [0] * n
+    heights = [0] * n
+    for i in range(n) :
+        widths[i],heights[i] = IN.ints()
+    return (n,p,widths,heights)
 
 def solve(inp) :
-    (r,b,c,cashiers) = inp
-    left,right = 0,2000000000000000000
-    while (right-left) > 1 :
-        m = (right+left) // 2
-        if evalCashiers(cashiers,m,r,b) : right = m
-        else :                            left = m
-    return "%d" % right
+    (n,p,widths,heights) = inp
+    intervals = [ (2*min(l,w), 2*math.sqrt(l*l+w*w)) for l,w in zip(widths,heights) ]
+    minadder =min(x[0] for x in intervals)
+    maxadder = sum(x[1] for x in intervals)
+    minperim = sum(2*l+2*w for l,w in zip(widths,heights))
+    maxperim = minperim + maxadder
+
+    if minperim + minadder > p : ans = minperim
+    elif maxperim <= p         : ans = maxperim
+    else                       : ans = intervalSearch(intervals,p,minperim)
+
+    return "%.8f" % ans
+
+def intervalSearch(intervals,p,minperim) :
+    targetAdder = p - minperim
+    l = [ intervals[0] ]
+    if checkIntervals(l,targetAdder) : return p
+    for i in intervals[1:] :
+        l = mergeInterval(l,i)
+        if checkIntervals(l,targetAdder) : return p
+        l = [x for x in l if x[0] < targetAdder]
+    return minperim + l[-1][1]
+
+def checkIntervals(l,t) :
+    for (ll,rr) in l :
+        if ll <= t and t <= rr : return True
+    return False
+
+def mergeInterval(l,i) :
+    l1,r1 = i
+    l2 = l + [i] + [(l1+x,r1+y) for x,y in l]
+    l2.sort()
+    l3 = []
+    ll,rr = l2[0]
+    for x,y in l2[1:] :
+        if x > rr : l3.append( (ll,rr) ); ll,rr = x,y
+        else: rr = max(y,rr)
+    l3.append( (ll,rr) )
+    return l3
 
 def printOutput(tt,ans) :
     print("Case #%d: %s" % (tt,ans))
 
-def coins(c,t) :
-    (m,s,p) = c
-    if p > t : return 0
-    maxt = p + s * m
-    if t >= maxt : return m
-    return (t - p) // s
-
-def evalCashiers(cashiers,t,r,b) :
-    coinsPerCashier = [coins(cashiers[i],t) for i in range(len(cashiers))]
-    coinsPerCashier.sort(reverse=True)
-    return True if sum(coinsPerCashier[:r]) >= b else False
-
 #####################################################################################################
 if __name__ == "__main__" :
     doit()
+
