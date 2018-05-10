@@ -53,28 +53,29 @@ def getInputs(IN) :
 def solve(inp) :
     (ac,aj,cameron,jaime) = inp
     cameron.sort(); jaime.sort()
-    #print("Cameron:",cameron,"Jaime:",jaime)
-    intervals = populateIntervals(cameron,jaime)
-    #print("Intervals:",intervals)
-    if len(intervals) < 3 : return 2
-    ans = fillGaps(intervals)
-    return "%d" % ans
+    if ac + aj == 1 : ans = 2
+    elif ac == 1 and aj == 1 : ans = 2
+    elif ac == 2:
+        (a,b),(c,d) = cameron[0],cameron[1]
+        if d-a > 720 and b - c + 1440 > 720 : ans = 4
+        else                                : ans = 2
+    else :
+        (a,b),(c,d) = jaime[0],jaime[1]
+        if d-a > 720 and b - c + 1440 > 720 : ans = 4
+        else                                : ans = 2
+    return "%d" % ans    
 
 def populateIntervals(c,j) :
     i1 = [ (x[0],x[1],'c') for x in c ]
     i2 = [ (x[0],x[1],'j') for x in j ]
     commitments = sorted(i1+i2)
-    t = 0; intervals = []; last = 'y'
+    t = 0; intervals = []
     for c in commitments :
-        if c[0] > t : 
-            intervals.append((c[0]-t,'x')); 
-            intervals.append((c[1]-c[0], c[2]))
-        elif c[2] != last :
-            intervals.append((c[1]-c[0], c[2]))
-        else :
-            intervals[-1] = ( (intervals[-1][0] + c[1]-c[0], c[2]) )
-        t,last = c[1],c[2]
-    if t < 24*60 : intervals.append((24*60-t,'x'))
+        intervals.append((c[0]-t,'x'))
+        intervals.append((c[1]-c[0], c[2]))
+        t = c[1]
+    intervals.append((24*60-t,'x'))
+    intervals = [x for x in intervals if x[0] > 0]  ## Filter out zero length intervals
     if intervals[0][1] == intervals[-1][1] : ## Wrap around case
         intervals[0] = (intervals[0][0] + intervals[-1][0],intervals[0][1])
         intervals.pop()
@@ -90,7 +91,7 @@ def fillGaps(ii) :
     group4 = [x for ll,x,rr in zip(nl,ii,nr) if ll[1] == 'j' and x[1] == 'x' and rr[1] == 'j']
 
     group1.sort()
-    group4.sort(reverse=True)
+    group2.sort(reverse=True)
 
     transitions = 2 * sum(1 for x in ii if x[1] == 'c')
     cameronTime = sum(x[0] for x in ii if x[1] == 'c')
