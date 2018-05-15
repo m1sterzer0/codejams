@@ -61,7 +61,7 @@ def dijkstra(src,nodes,adj) :
         d[n] = dist; s.add(n)
         for nn in adj[n] :
             if nn in s : continue
-            h.push( (dist + g[n][nn], nn) )
+            h.push( (dist + adj[n][nn], nn) )
     return d
 
 def bellmanFord(src,nodes,adj) :
@@ -183,6 +183,73 @@ def maxBipartiteMatching(leftNodes,rightNodes,edges) :
     mf,f = fordFulkerson(-999999,999999,nodes,adj)
     pairs = [ (b,c) for a,b,c in f if b != -999999 and c != 999999 ]
     return mf,pairs
+
+def kosaraju(nodes,adj) :
+    def makeInv(nodes,adj) :
+        adjInv = collections.defaultdict(list)
+        for n in adj :
+            for nn in adj[n] :
+                adjInv[nn][n] = adj[n][nn]
+        return adjInv
+
+    def dfs1(adj,n,s,visited) :
+        if n in visited : return
+        visited.add(n)
+        for nn in adj[n] : dfs1(adj,nn,s,visited)
+        s.append(n)
+
+    def dfs2(adjInv,n,sccnum,counter,visited) :
+        if n in visited : return
+        visited.add(n)
+        for nn in adj[n] : dfs2(adjInv,nn,sccnum,counter,visited)
+        sccnum[n] = counter
+
+    visited = set()
+    visitedInv = set()
+    counter = 0
+    s = []
+    sccnum = {}
+    
+    adjInv = makeInv(nodes,adj)
+    for n in nodes :
+        if n not in visited : dfs1(adj,n,s,visited)
+    while s :
+        n = s.pop()
+        if n not in visitedInv : dfs2(adjInv,n,sccnum,counter,visitedInv); counter += 1
+    scc = [ [] for x in range(counter) ]
+    for n in nodes : scc[sccnum[n]].append(n)
+    return counter, sccnum, scc
+
+def twosat(nlist,ninvlist,orterms) :
+    assert len(nlist) == len(ninvlist)
+    nn = len(nlist)
+    numnodes = 2*nn
+    t2n = {}
+    for i,n in enumerate(nlist)    : t2n[n] = i
+    for i,n in enumerate(ninvlist) : t2n[n] = i + nn
+    adj = {}
+    for i in range(numnodes) : adj[i] = {}
+    for t1,t2 in orterms :
+        n1,n2       = t2n[t1],t2n[t2]
+        n1inv,n2inv = (n1 + nn) % numnodes, (n2 + nn) % numnodes
+        adj[n1inv][n2] = 1
+        adj[n2inv][n1] = 1
+    _,sccNum,sccs = kosaraju(nlist+ninvlist,adj)
+    for i in range(nn) :
+        if sccNum[i] == sccNum[i+nn] : return False,[]
+    ## Now we are satisfyable, we just need to assign the values.
+    ## Process the sscs in topological order, and assign them to False unless already
+    ## forced to True by a previous assignment
+    value = [None] * numnodes
+    for scc in sccs :
+        sccval = False
+        values = [value[n] for n in scc]
+        if True in values : sccval = True
+        assert (False not in values)
+        for n in scc : 
+            value[n] = sccval
+            value[ (n + nn) % numnodes ] = not sccval
+    return True, value[:nn]
 
 ##def _tc1() :
 ##    ## From https://www.cs.princeton.edu/~rs/AlgsDS07/15ShortestPaths.pdf
