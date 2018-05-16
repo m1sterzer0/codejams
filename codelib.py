@@ -50,6 +50,19 @@ class unionFind(object) :
             if wx >= wy : self.weight[px] = wx + wy; del self.weight[py]; self.parent[py] = px
             else        : self.weight[py] = wx + wy; del self.weight[px]; self.parent[px] = py
     
+def makeAdj(nodes,edges,weighted=False,bidir=False) :
+    adj = {}
+    for n in nodes : adj[n] = {}
+    if (weighted) :
+        for (x,y,w) in edges : 
+            adj[x][y] = w
+            if bidir : adj[y][x] = w
+    else :
+        for (x,y) in edges : 
+            adj[x][y] = 1
+            if bidir : adj[y][x] = 1
+    return adj
+
 def dijkstra(src,nodes,adj) :
     d = {}
     for n in nodes : d[n] = 1e99
@@ -166,9 +179,9 @@ def fordFulkerson(src,sink,nodes,adj) :
 
     flows = []
     for n in nodes :
-        for nn in adj[nodes] :
+        for nn in adj[n] :
             if adj[n][nn] == myadj[n][nn] : continue
-            flows.append((adj[n][nn] - myadj[n][nn], n, nn))
+            flows.append((n, nn, adj[n][nn] - myadj[n][nn]))
     
     return maxFlow,flows
 
@@ -186,7 +199,8 @@ def maxBipartiteMatching(leftNodes,rightNodes,edges) :
 
 def kosaraju(nodes,adj) :
     def makeInv(nodes,adj) :
-        adjInv = collections.defaultdict(list)
+        adjInv = {}
+        for n in nodes : adjInv[n] = {}
         for n in adj :
             for nn in adj[n] :
                 adjInv[nn][n] = adj[n][nn]
@@ -201,7 +215,7 @@ def kosaraju(nodes,adj) :
     def dfs2(adjInv,n,sccnum,counter,visited) :
         if n in visited : return
         visited.add(n)
-        for nn in adj[n] : dfs2(adjInv,nn,sccnum,counter,visited)
+        for nn in adjInv[n] : dfs2(adjInv,nn,sccnum,counter,visited)
         sccnum[n] = counter
 
     visited = set()
@@ -219,6 +233,7 @@ def kosaraju(nodes,adj) :
     scc = [ [] for x in range(counter) ]
     for n in nodes : scc[sccnum[n]].append(n)
     return counter, sccnum, scc
+
 
 def twosat(nlist,ninvlist,orterms) :
     assert len(nlist) == len(ninvlist)
@@ -251,78 +266,64 @@ def twosat(nlist,ninvlist,orterms) :
             value[ (n + nn) % numnodes ] = not sccval
     return True, value[:nn]
 
-##def _tc1() :
-##    ## From https://www.cs.princeton.edu/~rs/AlgsDS07/15ShortestPaths.pdf
-##    n1 = ['s', 2, 3, 4, 5, 6, 7, 't']
-##    e1 = [ ('s', 2, 9),
-##           ('s', 6, 14),
-##           ('s', 7, 15),
-##           (6, 3, 18),
-##           (3, 5, 2),
-##           (5,4,11),
-##           (5,'t',16),
-##           (6,7,5),
-##           (7,5,20),
-##           (6,5,30),
-##           (4,3,6),
-##           (4,'t',6),
-##           (3,'t',19),
-##           (7,'t',44),
-##           (2,3,24)
-##        ]
-##    g1 = graph1(n1,e1)
-##    d = g1.dijkstra('s')
-##    d2,_ = g1.bellmanFord('s')
-##    d3 = g1.floydWarshall()
-##    print("_tc1:")
-##    for n in n1 : print("%s --> %s: %d %d %d" % ('s', str(n), d[n], d2[n], d3['s'][n]))
-##
-##def _tc2() :
-##    n1 = [1, 2, 3, 4, 5, 6, 7, 8]
-##    e1 = [ (1, 2, 9),
-##           (1, 6, 14),
-##           (1, 7, 15),
-##           (6, 3, 18),
-##           (3, 5, 2),
-##           (5,4,11),
-##           (5,8,16),
-##           (6,7,5),
-##           (7,5,20),
-##           (6,5,30),
-##           (4,3,6),
-##           (4,8,6),
-##           (3,8,19),
-##           (7,8,44),
-##           (2,3,24)
-##        ]
-##    g1 = graph1(n1,e1,bidir=True)
-##    t1 = g1.prim()
-##    print(sorted(t1))
-##    t2 = g1.kruskal()
-##    print(sorted(t2))
-##
-##def _tc3() :
-##    n1 = [1, 2, 3, 4, 5, 6, 7, 8]
-##    e1 = [ (1, 2, 9),
-##           (1, 6, 14),
-##           (1, 7, 15),
-##           (6, 3, 18),
-##           (3, 5, 2),
-##           (5,4,11),
-##           (5,8,16),
-##           (6,7,5),
-##           (7,5,20),
-##           (6,5,30),
-##           (4,3,6),
-##           (4,8,6),
-##           (3,8,19),
-##           (7,8,44),
-##           (2,3,24) ]
-##    g1 = graph1(n1,e1)
-##    f = g1.fordFulkerson(1,8)
-##    print(f)
-##
-##if __name__ == "__main__" :
-##    _tc1()
-##    _tc2()
-##    _tc3()
+def _tc1() :
+    ## From https://www.cs.princeton.edu/~rs/AlgsDS07/15ShortestPaths.pdf
+    n1 = ['s', 2, 3, 4, 5, 6, 7, 't']
+    e1 = [ ('s',2,9), ('s',6,14), ('s',7,15), (6,3,18),  (3,5,2),    (5,4,11),   (5,'t',16), (6,7,5),
+           (7,5,20),  (6,5,30),   (4,3,6),    (4,'t',6), (3,'t',19), (7,'t',44), (2,3,24)  ]
+    adj1 = makeAdj(n1,e1,weighted=True)
+
+    d    = dijkstra('s',n1,adj1)
+    d2,_ = bellmanFord('s',n1,adj1)
+    d3   = floydWarshall(n1,adj1)
+    print("_tc1:")
+    for n in n1 : print("%s --> %s: %d %d %d" % ('s', str(n), d[n], d2[n], d3['s'][n]))
+
+def _tc2() :
+    n1 = [1, 2, 3, 4, 5, 6, 7, 8]
+    e1 = [ (1,2,9), (1,6,14), (1,7,15), (6,3,18), (3,5,2), (5,4,11), (5,8,16), (6,7,5),
+           (7,5,20), (6,5,30), (4,3,6), (4,8,6), (3,8,19), (7,8,44), (2,3,24) ]
+    adj1 = makeAdj(n1,e1,weighted=True,bidir=True)
+    t1 = prim(n1,adj1)
+    t2 = kruskal(n1,adj1)
+    print("_tc2:")
+    print(sorted(t1))
+    print(sorted(t2))
+
+def _tc3() :
+    n1 = [1, 2, 3, 4, 5, 6, 7, 8]
+    e1 = [ (1,2,9),  (1,6,14), (1,7,15), (6,3,18), (3,5,2),  (5,4,11), (5,8,16), (6,7,5), (7,5,20),
+           (6,5,30), (4,3,6),  (4,8,6),  (3,8,19), (7,8,44), (2,3,24) ]
+    adj1 = makeAdj(n1,e1,weighted=True)
+    f = fordFulkerson(1,8,n1,adj1)
+    print("_tc3:")
+    print(f)
+
+def _tc4():
+    n1 = [1,2,3,4,5,6,7]
+    e1 = [ (3,4), (1,3), (7,4), (2,3), (4,5), (4,6), (1,2), (2,4), (1,4), (6,7) ]
+    adj1 = makeAdj(n1,e1)
+
+    n2 = [1,2,3,4,5,6,7,8]
+    e2 = [ (1,2), (2,3), (3,1), (3,4), (5,4), (6,4), (8,6), (6,7), (7,8) ]
+    adj2 = makeAdj(n2,e2)
+
+    n3 = [1,2,3,4,5,6,7,8,9]
+    e3 = [ (1,4), (2,8), (3,6), (4,7), (5,2), (6,9), (7,1), (8,5), (8,6), (9,7), (9,3) ]
+    adj3 = makeAdj(n3,e3)
+
+    n4 = [1,2,3,4,5,6,7,8]
+    e4 = [ (1,2), (2,6), (2,3), (2,4), (3,1), (3,4), (4,5), (5,4), (6,5), (6,7), (7,6), (7,8), (8,5), (8,7) ]
+    adj4 = makeAdj(n4,e4)
+
+    print("_tc4:")
+    print(kosaraju(n1,adj1))
+    print(kosaraju(n2,adj2))
+    print(kosaraju(n3,adj3))
+    print(kosaraju(n4,adj4))
+    
+if __name__ == "__main__" :
+    _tc1()
+    _tc2()
+    _tc3()
+    _tc4()
