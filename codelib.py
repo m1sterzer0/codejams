@@ -234,7 +234,6 @@ def kosaraju(nodes,adj) :
     for n in nodes : scc[sccnum[n]].append(n)
     return counter, sccnum, scc
 
-
 def twosat(nlist,ninvlist,orterms) :
     assert len(nlist) == len(ninvlist)
     nn = len(nlist)
@@ -249,7 +248,7 @@ def twosat(nlist,ninvlist,orterms) :
         n1inv,n2inv = (n1 + nn) % numnodes, (n2 + nn) % numnodes
         adj[n1inv][n2] = 1
         adj[n2inv][n1] = 1
-    _,sccNum,sccs = kosaraju(nlist+ninvlist,adj)
+    _,sccNum,sccs = kosaraju(list(range(numnodes)),adj)
     for i in range(nn) :
         if sccNum[i] == sccNum[i+nn] : return False,[]
     ## Now we are satisfyable, we just need to assign the values.
