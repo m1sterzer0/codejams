@@ -1,57 +1,52 @@
-import fileinput
+import collections
+import functools
+import heapq
+import itertools
+import math
+import re
 import sys
-import bisect
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
-class MyInput(object) :
-    def __init__(self,default_file="A.in") :
-        if (len(sys.argv) < 2) : self.lines = [x for x in fileinput.input(default_file)]
-        #if (len(sys.argv) < 2) : self.lines = [x for x in fileinput.input("A.short")]
-        else                   : self.lines = [x for x in fileinput.input()]
+class myin(object) :
+    def __init__(self,default_file=None,buffered=False) :
+        self.fh = sys.stdin
+        self.buffered = buffered
+        if(len(sys.argv) >= 2) : self.fh = open(sys.argv[1])
+        elif default_file is not None : self.fh = open(default_file)
+        if (buffered) : self.lines = self.fh.readlines()
         self.lineno = 0
-    def getintline(self,n=-1) : 
-        ans = tuple(int(x) for x in self.lines[self.lineno].rstrip().split())
-        self.lineno += 1
-        if n > 0 and len(ans) != n : raise Exception('Expected %d ints but got %d in MyInput.getintline'%(n,len(ans)))
-        return ans
-    def getfloatline(self,n=-1) :
-        ans = tuple(float(x) for x in self.lines[self.lineno].rstrip().split())
-        self.lineno += 1
-        if n > 0 and len(ans) != n : raise Exception('Expected %d ints but got %d in MyInput.getfloatline'%(n,len(ans)))
-        return ans
-    def getstringline(self,n=-1) :
-        ans = tuple(self.lines[self.lineno].rstrip().split())
-        self.lineno += 1
-        if n > 0 and len(ans) != n : raise Exception('Expected %d ints but got %d in MyInput.getstringline'%(n,len(ans)))
-        return ans
-    def getbinline(self,n=-1) :
-        ans = tuple(int(x,2) for x in self.lines[self.lineno].rstrip().split())
-        self.lineno += 1
-        if n > 0 and len(ans) != n : raise Exception('Expected %d ints but got %d in MyInput.getbinline'%(n,len(ans)))
-        return ans
+    def input(self) : 
+        if (self.buffered) : ans = self.lines[self.lineno]; self.lineno += 1; return ans
+        return self.fh.readline()
+    def strs(self) :   return self.input().rstrip().split()
+    def ints(self) :   return (int(x) for x in self.input().rstrip().split())
+    def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
+    def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-## We realize that the square of a palindrome is a palindrome iff there are no carries when doing the addition after the long multiplication
-## Thus, a necessary condition is that the we don't carry when calculating the "middle" digit
-## This gives us the sum of the squares of the digits in the generating palindrome.  Thus, we have the following cases/observations for possibilities
-## * All of the digits of the generating palindrome must be 0, 1, 2, or 3.  Cases
-## * A single 3
-## * Two 2's, and the rest zeros
-## * One two (must be the middle number), up to 4 ones (two of which must be on the outside), and the rest zeros
-## * Up to 9 ones, the reset zeros
-##
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
 
-## * A single 3
-## * Two 2's and the reset zeros
-## * One two in the middle, and two ones on the outside
-## * One two in the middle, two ones on the outside, and two other symmetric ones
-## * Two ones on the outside
-## * Two ones on the outside + one one in the middle
-## * Two ones on the outside + two ones in the middle
-def generateFairAndSquare() :
-    ## n is the number of digits in the square root of the square and fair number
+#####################################################################################################
+
+import bisect
+glist  = []
+def presolve() :
+    global glist
     ans = []
-
     for n in range(1,51) :
-
         leftPlace = 10**(n-1)
         middlePlace = 10**(n//2)  ## Only for odd N
     
@@ -74,7 +69,7 @@ def generateFairAndSquare() :
             b = 1 * leftPlace  +  1
             for i in range(1,n//2) :
                 b2 = b + 1 * 10**i + 1 * 10**(n-i-1); ans.append(b2*b2)
-                if n >= 5:
+                if n >= 5 and n & 1:
                     b3 = b2 + 1 * middlePlace
                     b4 = b2 + 2 * middlePlace
                     ans.append(b3*b3)
@@ -86,7 +81,7 @@ def generateFairAndSquare() :
             for i in range(1,n//2) :
                 for j in range(i+1,n//2) :
                     b2 = b + 10**i + 10**j + 10**(n-i-1) + 10**(n-j-1) ; ans.append(b2*b2)
-                    if n >= 7 :
+                    if n >= 7 and n & 1:
                         b3 = b2 + middlePlace; ans.append(b3*b3)
                             
         ## Eight and 9 nonzero-digits -- choose 3
@@ -96,20 +91,27 @@ def generateFairAndSquare() :
                 for j in range(i+1,n//2) :
                     for k in range(j+1,n//2) :
                         b2 = b + 10**i + 10**j + 10**k + 10**(n-i-1) + 10**(n-j-1) + 10**(n-k-1) ; ans.append(b2*b2)
-                        if n >= 9 :
+                        if n >= 9 and n & 1:
                             b3 = b2 + middlePlace; ans.append(b3*b3)
     ans.sort()
-    return ans
+    glist = ans
 
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
 
+def getInputs(IN) :
+    a,b = IN.ints()
+    return (a,b)
+
+def solve(inp) :
+    (a,b) = inp
+    n1 = bisect.bisect(glist,a-1)
+    n2 = bisect.bisect(glist,b)
+    return str(n2-n1)    
+
+#####################################################################################################
 if __name__ == "__main__" :
-    ans = generateFairAndSquare()
-    #print(ans)
-    myin = MyInput("C.short")
-    (t,) = myin.getintline()
-    for tt in range(t) :
-        (a,b) = myin.getintline(2)
-        n1 = bisect.bisect(ans,a-1)
-        n2 = bisect.bisect(ans,b)
-        print("Case #%d: %d" % (tt+1,n2-n1))
+    presolve()
+    #for x in glist : print(x)
+    doit()
 
