@@ -1,52 +1,65 @@
-
-import fileinput
+import collections
+import functools
+import heapq
+import itertools
+import math
+import re
 import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
-class MyInput(object) :
-    def __init__(self) :
-        if (len(sys.argv) < 2) : self.lines = [x for x in fileinput.input("A.in")]
-        else                   : self.lines = [x for x in fileinput.input()]
+class myin(object) :
+    def __init__(self,default_file=None,buffered=False) :
+        self.fh = sys.stdin
+        self.buffered = buffered
+        if(len(sys.argv) >= 2) : self.fh = open(sys.argv[1])
+        elif default_file is not None : self.fh = open(default_file)
+        if (buffered) : self.lines = self.fh.readlines()
         self.lineno = 0
-    def getintline(self,n=-1) : 
-        ans = tuple(int(x) for x in self.lines[self.lineno].rstrip().split())
-        self.lineno += 1
-        if n > 0 and len(ans) != n : raise Exception('Expected %d ints but got %d in MyInput.getintline'%(n,len(ans)))
-        return ans
-    
-def initData() :
-    lookup = [0] * 17
-    for i in range(17) : lookup[i] = []
-    return lookup
+    def input(self) : 
+        if (self.buffered) : ans = self.lines[self.lineno]; self.lineno += 1; return ans
+        return self.fh.readline()
+    def strs(self) :   return self.input().rstrip().split()
+    def ints(self) :   return (int(x) for x in self.input().rstrip().split())
+    def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
+    def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-def processGrid(iter,lookup,myin) :
-    for i in range(4) :
-        (a,b,c,d) = myin.getintline()
-        for x in (a,b,c,d) :
-            lookup[x].append(i+1)
-
-def processAnswer(lookup,ans1,ans2,case) :
-    candidates = []
-    for i in range(1,17) :
-        if lookup[i][0] == ans1 and lookup[i][1] == ans2 :
-            candidates.append(i)
-    if len(candidates) == 0 :
-        print("Case #%d: Volunteer cheated!" % (case,))
-    elif len(candidates) >= 2 :
-        print("Case #%d: Bad magician!" % (case,))
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
     else :
-        print("Case #%d: %d" % (case,candidates[0]))
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
 
+#####################################################################################################
+
+def printOutput(tt,ans) :
+    print("Case #%d: %s" % (tt,ans))
+
+def getInputs(IN) :
+    ans1 = int(IN.input())
+    board1 = [ list(IN.ints()) for x in range(4) ]
+    ans2 = int(IN.input())
+    board2 = [ list(IN.ints()) for x in range(4) ]
+    return (ans1,board1,ans2,board2)
+
+def solve(inp) :
+    (ans1,board1,ans2,board2) = inp
+    sol = set(board1[ans1-1]) & set(board2[ans2-1])
+    if len(sol) == 0 : return "Volunteer cheated!"
+    if len(sol) > 1 : return "Bad magician!"
+    ans = sol.pop()
+    return str(ans)
+
+#####################################################################################################
 if __name__ == "__main__" :
-    myin = MyInput()
-    (t,) = myin.getintline()
-    for tt in range(t) :
-        lookup = initData()
-        (ans1,) = myin.getintline()
-        processGrid(1,lookup,myin)
-        (ans2,) = myin.getintline()
-        processGrid(2,lookup,myin)
-        processAnswer(lookup,ans1,ans2,tt+1)
-        
+    doit()
 
-
-    

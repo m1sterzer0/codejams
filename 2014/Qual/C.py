@@ -1,33 +1,66 @@
-import fileinput
+import collections
+import functools
+import heapq
+import itertools
+import math
+import re
 import sys
+from fractions       import gcd
+from fractions       import Fraction
+from multiprocessing import Pool    
+from operator        import itemgetter
 
-class MyInput(object) :
-    def __init__(self) :
-        if (len(sys.argv) < 2) : self.lines = [x for x in fileinput.input("C.in")]
-        else                   : self.lines = [x for x in fileinput.input()]
+class myin(object) :
+    def __init__(self,default_file=None,buffered=False) :
+        self.fh = sys.stdin
+        self.buffered = buffered
+        if(len(sys.argv) >= 2) : self.fh = open(sys.argv[1])
+        elif default_file is not None : self.fh = open(default_file)
+        if (buffered) : self.lines = self.fh.readlines()
         self.lineno = 0
-    def getintline(self,n=-1) : 
-        ans = tuple(int(x) for x in self.lines[self.lineno].rstrip().split())
-        self.lineno += 1
-        if n > 0 and len(ans) != n : raise Exception('Expected %d ints but got %d in MyInput.getintline'%(n,len(ans)))
-        return ans
-    def getfloatline(self,n=-1) :
-        ans = tuple(float(x) for x in self.lines[self.lineno].rstrip().split())
-        self.lineno += 1
-        if n > 0 and len(ans) != n : raise Exception('Expected %d ints but got %d in MyInput.getintline'%(n,len(ans)))
-        return ans
+    def input(self) : 
+        if (self.buffered) : ans = self.lines[self.lineno]; self.lineno += 1; return ans
+        return self.fh.readline()
+    def strs(self) :   return self.input().rstrip().split()
+    def ints(self) :   return (int(x) for x in self.input().rstrip().split())
+    def bins(self) :   return (int(x,2) for x in self.input().rstrip().split())
+    def floats(self) : return (float(x) for x in self.input().rstrip().split())
 
-## For the Deceitful war, you clearly bleed out your opponents top pieces with your bottom pieces
-## For the Regular war, playing your boards from bottom to top seems to be the best you can do. 
+def doit(fn=None,multi=False) :
+    IN = myin(fn)
+    t, = IN.ints()
+    inputs = [ getInputs(IN) for x in range(t) ]
+    if (not multi) : 
+        for tt,i in enumerate(inputs,1) :
+            ans = solve(i)
+            printOutput(tt,ans)
+    else :
+        with Pool(processes=32) as pool : outputs = pool.map(solve,inputs)
+        for tt,ans in enumerate(outputs,1) :
+            printOutput(tt,ans)
 
-## ans[0][0] is the click
+#####################################################################################################
 
-def initSol(r,c) :
-    ans = [0] * r
-    for i in range(r) : ans[i] = ['*'] * c
-    return ans
+def printOutput(tt,ans) :
+    print("Case #%d:" % (tt,))
+    for l in ans : print(l)
 
-def solve(r,c,m) :
+def getInputs(IN) :
+    (r,c,m) = IN.ints()
+    return (r,c,m)
+
+def solve(inp) :
+    (r,c,m) = inp
+    transposed = False
+    if (r>c) : transposed = True; (r,c) = (c,r)
+    impossible,ans = lsolve(r,c,m)
+    if impossible : return ["Impossible"]
+    if (not impossible and transposed) : ans = flipans(r,c,ans); (r,c) = (c,r)
+    return [ "".join(x) for x in ans ]
+    
+def initSol(r,c) : return [ ['*'] * c for x in range(r) ]
+
+def lsolve(r,c,m) :
     n = r*c
     ans = initSol(r,c)
     holesLeft = n-m
@@ -36,14 +69,9 @@ def solve(r,c,m) :
     if r == 2 and holesLeft > 1 and holesLeft % 2 == 1 : return True, None
     if r >= 2  and holesLeft in (2,3,5,7) : return True, None
 
-    if m == 0 :
-        for i in range(r) :
-            for j in range(c) :
-                ans[i][j] = '.'
-
-    elif holesLeft == 1 :
-        pass
-
+    ## Deal with trivial pass cases first
+    if m == 0 : ans = [ ['.'] * c for x in range(r) ]
+    elif holesLeft == 1 : pass
     elif r == 1 :
         for i in range(holesLeft) :
             ans[0][i] = '.'
@@ -58,12 +86,9 @@ def solve(r,c,m) :
             ans[0][i] = ans[1][i] = ans[2][i] = '.'
             holesLeft -= 3
             i += 1
-        if holesLeft == 4 :
-            ans[0][i] = ans[1][i] = ans[0][i+1] = ans[1][i+1] = '.'
-        elif holesLeft == 3:
-            ans[0][i] = ans[1][i] = ans[2][i] = '.'
-        else :
-            ans[0][i] = ans[1][i] = '.'
+        if holesLeft == 4 :  ans[0][i] = ans[1][i] = ans[0][i+1] = ans[1][i+1] = '.'
+        elif holesLeft == 3: ans[0][i] = ans[1][i] = ans[2][i] = '.'
+        else :               ans[0][i] = ans[1][i] = '.'
 
     else :
         ridx = 0
@@ -88,20 +113,7 @@ def flipans(r,c,ans) :
             ans2[j][i] = ans[i][j]
     return ans2
 
-def doPrintBoard(r,c,ans) :
-    for i in range(r) :
-        print("".join(ans[i]))
-      
+#####################################################################################################
 if __name__ == "__main__" :
-    myin = MyInput()
-    (t,) = myin.getintline()
-    for tt in range(t) :
-        (r,c,m) = myin.getintline(3)
-        transposed = False
-        if (r>c) : transposed = True; (r,c) = (c,r)
-        impossible,ans = solve(r,c,m)
-        if (not impossible and transposed) : ans = flipans(r,c,ans); (r,c) = (c,r)
-        print("Case #%d:" % (tt+1,))
-        #print("DEBUG: (r,c,m) = (%d,%d,%d)"%(r,c,m))
-        if impossible : print("Impossible")
-        else :          doPrintBoard(r,c,ans)
+    doit()
+
