@@ -51,14 +51,15 @@ def getInputs(IN) :
 
 def solve(inp) :
     (n,w) = inp
+    inf = 1000000000000000000
     w6 = [6*x for x in w]
     ## Use simple dp, calculating the minimum weight k stack that can be made with elements <= i
     dp = list(itertools.accumulate(w,min))
     for stackSize in range(2,n+1) :
-        olddp = [1e99] + dp[:n]
-        candidates = [ 1e99 if x6 < odp else x + odp for x,x6,odp in zip(w,w6,olddp) ]
+        olddp = [inf] + dp[:n]
+        candidates = [ inf if x6 < odp else x + odp for x,x6,odp in zip(w,w6,olddp) ]
         dp         = list(itertools.accumulate(candidates,min))
-        if dp[-1] == 1e99 : return "%d" % (stackSize-1)
+        if dp[-1] == inf : return "%d" % (stackSize-1)
     return "%d" % n
 
 #####################################################################################################
