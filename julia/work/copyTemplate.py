@@ -13,7 +13,7 @@ destfiles = [
         "1B/C.jl",
         "1C/A.jl",
         "1C/B.jl",
-        "1C/A.jl",
+        "1C/C.jl",
         "2/A.jl",
         "2/B.jl",
         "2/C.jl",
@@ -26,7 +26,8 @@ destfiles = [
         "WF/B.jl",
         "WF/C.jl",
         "WF/D.jl",
-        "WF/E.jl" ]
+        "WF/E.jl",
+        "WF/F.jl" ]
 
 for f in destfiles :
     if os.path.exists(f) : continue
