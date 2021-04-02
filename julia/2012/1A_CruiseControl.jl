@@ -1,12 +1,22 @@
-struct Event
-    t::Float64
-    type::Int64
-    fc::Int64
-    sc::Int64
-end
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+struct Event; t::F; type::I; fc::I; sc::I; end
 Base.isless(a::Event,b::Event) = a.t < b.t || a.t == b.t && a.type < b.type
 
-function doevents(events::Vector{Event},conflicts::Vector{Int64},S::Vector{Int64},P::Vector{Int64},c1::Int64,c2::Int64)
+function doevents(events::Vector{Event},conflicts::VI,S::VI,P::VI,c1::I,c2::I)
     (fc,sc) = S[c1] >= S[c2] ? (c1,c2) : (c2,c1)
     if P[fc] >= P[sc]+5; return; end
     if abs(P[fc]-P[sc]) < 5
@@ -26,16 +36,63 @@ function doevents(events::Vector{Event},conflicts::Vector{Int64},S::Vector{Int64
     end
 end
 
-function solve(events::Vector{Event},state::Vector{String},conflicts::Vector{Int64})::Float64
+function solve(idx::I,events::Vector{Event},state::Vector{Char},conflicts::VI)::F
+    mystate::Vector{Char} = state[:]
+    myconflicts::VI = conflicts[:]
+    while idx < length(events)
+        e::Event = events[idx]
+        if e.type == 0
+            for c::I in (e.fc,e.sc)
+                myconflicts[c] -= 1
+                if myconflicts[c] == 0; mystate[c] = '.'; end
+            end
+        else
+            for c::I in (e.fc,e.sc); myconflicts[c] += 1; end
+            if mystate[e.fc] == mystate[e.sc]
+                if mystate[e.fc] != '.'; return e.t; end
+                mystate[e.fc] = 'L'; mystate[e.sc] = 'R'
+                a1::F = solve(idx+1,events,mystate,myconflicts)
+                mystate[e.fc] = 'R'; mystate[e.sc] = 'L'
+                a2::F = solve(idx+1,events,mystate,myconflicts)
+                return max(a1,a2)
+            elseif mystate[e.fc] == '.'
+                mystate[e.fc] = mystate[e.sc] == 'L' ? 'R' : 'L'
+            elseif mystate[e.sc] == '.'
+                mystate[e.sc] = mystate[e.fc] == 'L' ? 'R' : 'L'
+            end
+        end
+        idx += 1
+    end
+    return 1e99
+end
+
+function solveSmall(N::I,C::Vector{Char},S::VI,P::VI)::F
+    conflicts::VI = fill(0,N)
+    events::Vector{Event} = []
+    for i in 1:N-1
+        for j in i+1:N
+            doevents(events,conflicts,S,P,i,j)
+        end
+    end
+    sort!(events)
+    if length(events) == 0; return 1e99; end
+    state::Vector{Char} = fill('.',N)
+    for i in 1:N
+        if conflicts[i] > 0; state[i] = C[i]; end
+    end
+    return solve(1,events,state,conflicts)
+end
+
+function solve2(events::Vector{Event},state::Vector{String},conflicts::VI)::F
     choicenum = 1
     for e in events
         if e.type == 0
-            for c::Int64 in (e.fc,e.sc)
+            for c::I in (e.fc,e.sc)
                 conflicts[c] -= 1
                 if conflicts[c] == 0; state[c] = "."; end
             end
         else
-            for c::Int64 in (e.fc,e.sc); conflicts[c] += 1; end
+            for c::I in (e.fc,e.sc); conflicts[c] += 1; end
             if state[e.fc] == state[e.sc]
                 if state[e.fc] == "."
                     state[e.fc] = "S$choicenum"
@@ -91,37 +148,100 @@ function antistate(state::Vector{String},s1::String,s2::String)
     end
 end
 
+function solveLarge(N::I,C::Vector{Char},S::VI,P::VI)::F
+    conflicts::Vector{Int64} = fill(0,N)
+    events::Vector{Event} = []
+    for i in 1:N-1
+        for j in i+1:N
+            doevents(events,conflicts,S,P,i,j)
+        end
+    end
+    sort!(events)
+    if length(events) == 0; return 1e99; end
+    state::Vector{String} = fill(".",N)
+    for i in 1:N
+        if conflicts[i] > 0; state[i] = string(C[i]); end
+    end
+    return solve2(events,state,conflicts)
+end
+
+function gencase(Nmin::I,Nmax::I,Smax::I,Pmax::I)
+    N = rand(Nmin:Nmax)
+    C::Vector{Char} = fill('.',N)
+    S::VI = fill(0,N)
+    P::VI = fill(0,N)
+    good = false
+    while !good
+        good = true
+        for i in 1:N; C[i] = rand(['L','R']); end
+        for i in 1:N; S[i] = rand(1:Smax); end
+        for i in 1:N; P[i] = rand(1:Pmax); end
+        larr::VI = []; rarr::VI = []
+        for i in 1:N
+            if C[i] == 'L'; push!(larr,P[i]); else; push!(rarr,P[i]); end
+        end
+        for arr in (larr,rarr)
+            sort!(arr)
+            for i in 1:length(arr)-1
+                if arr[i+1]-arr[i] < 5; good = false; end
+            end
+        end
+    end
+    return (N,C,S,P)
+end
+
+function test(ntc::I,Nmin::Int64,Nmax::Int64,Smax::Int64,Pmax::Int64,check::Bool=true)
+    pass = 0
+    for ttt in 1:ntc
+        (N,C,S,P) = gencase(Nmin,Nmax,Smax,Pmax)
+        ans2 = solveLarge(N,C,S,P)
+        if check
+            ans1 = solveSmall(N,C,S,P)
+            if ans1 == ans2
+                 pass += 1
+            else
+                print("ERROR: ttt:$ttt ans1:$ans1 ans2:$ans2\n")
+                ans1 = solveSmall(N,C,S,P)
+                ans2 = solveLarge(N,C,S,P)
+            end
+       else
+           print("Case $ttt: $ans2\n")
+       end
+    end
+    if check; print("$pass/$ntc passed\n"); end
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N = parse(Int64,rstrip(readline(infile)))
-        L = fill('.',N)
-        S = fill(0,N)
-        P = fill(0,N)
+        N = gi()
+        C::Vector{Char} = fill('.',N)
+        S::VI = fill(0,N)
+        P::VI = fill(0,N)
         for i in 1:N
-            a,b,c = split(rstrip(readline(infile)))
-            L[i] = a[1]
+            a,b,c = gss()
+            C[i] = a[1]
             S[i] = parse(Int64,b)
             P[i] = parse(Int64,c)
         end
-        conflicts::Vector{Int64} = fill(0,N)
-        events::Vector{Event} = []
-        for i in 1:N-1
-            for j in i+1:N
-                doevents(events,conflicts,S,P,i,j)
-            end
-        end
-        sort!(events)
-        if length(events) == 0; print("Possible\n"); continue; end
-        state::Vector{String} = fill(".",N)
-        for i in 1:N
-            if conflicts[i] > 0; state[i] = string(L[i]); end
-        end
-        x = solve(events,state,conflicts)
-        if x == 1e99; print("Possible\n"); else; print("$x\n"); end
+        #ans = solveSmall(N,C,S,P)
+        ans = solveLarge(N,C,S,P)
+        if ans == 1e99; print("Possible\n"); else; print("$ans\n"); end
     end
 end
 
+Random.seed!(8675309)
 main()
+#test(100,1,6,3,30)
+#test(100,1,6,10,100)
+#test(100,1,6,30,1000)
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

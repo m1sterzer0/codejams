@@ -1,5 +1,83 @@
 
-function checkpoint(N::Int64,X::Vector{Int64},Y::Vector{Int64},C::Vector{Char},x::Int64,y::Int64)
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+function gencase(Nmax::I,Cmax::I,Xmax::I,corruptThresh::F=0.9995)
+    N = rand(1:Nmax)
+    corrupt::Vector{Bool} = [rand() < corruptThresh for i in 1:N]
+    cx = rand(-Cmax:Cmax)
+    cy = rand(-Cmax:Cmax)
+    spts::SPI = SPI()
+    while length(spts) < N; push!(spts,(rand(-Xmax:Xmax),rand(-Xmax:Xmax))); end
+    lpts::VPI = [(x,y) for (x,y) in spts]
+    shuffle!(lpts)
+    X::VI = [xx[1] for xx in lpts]
+    Y::VI = [xx[2] for xx in lpts]
+    C::Vector{Char} = fill('.',N)
+    for i in 1:N
+        d = max(abs(X[i]-cx),abs(Y[i]-cy))
+        d2 = d % 2 == 0
+        C[i] = d2 ^ corrupt[i] ? '.' : '#'
+    end
+    return (N,X,Y,C)
+end
+
+function test(ntc::I,Nmax::I,Cmax::I,Xmax::I,check::Bool=true)
+    pass = 0
+    for ttt in 1:ntc
+        (N,X,Y,C) = gencase(Nmax,Cmax,Xmax)
+        ans2 = solveLarge(N,X,Y,C)
+        if check
+            ans1 = solveSmall(N,X,Y,C)
+            if ans1 == ans2
+                 pass += 1
+            else
+                print("ERROR: ttt:$ttt ans1:$ans1 ans2:$ans2\n")
+                ans1 = solveSmall(N,X,Y,C)
+                ans2 = solveLarge(N,X,Y,C)
+            end
+       else
+           print("Case $ttt: $ans2\n")
+       end
+    end
+    if check; print("$pass/$ntc passed\n"); end
+end
+
+function solveSmall(N::I,X::VI,Y::VI,C::Vector{Char})::PI
+    ansx::I = 1_000_000_000_000_000_000
+    ansy::I = 0
+    manh::I = 1_000_000_000_000_000_000
+    for x in -300:300
+        for y in -300:300
+            if abs(x)+abs(y) > manh; continue; end
+            if abs(x)+abs(y) == manh && x < ansx; continue; end
+            if abs(x)+abs(y) == manh && x == ansx && y < ansy; continue; end
+            good = true
+            for i in 1:N
+                if C[i] == '#'
+                    if max(abs(X[i]-x),abs(Y[i]-y)) & 1 == 0; good = false; break; end
+                else
+                    if max(abs(X[i]-x),abs(Y[i]-y)) & 1 == 1; good = false; break; end
+                end
+            end
+            if good; ansx = x; ansy = y; manh = abs(x)+abs(y); end
+        end
+    end
+    return (ansx,ansy)
+end    
+
+function checkpoint(N::I,X::VI,Y::VI,C::Vector{Char},x::I,y::I)
     for i in 1:N
         if C[i] == '#'
             if max(abs(X[i]-x),abs(Y[i]-y)) & 1 == 0; return false; end
@@ -10,14 +88,14 @@ function checkpoint(N::Int64,X::Vector{Int64},Y::Vector{Int64},C::Vector{Char},x
     return true
 end
 
-function solve(N::Int64,X::Vector{Int64},Y::Vector{Int64},C::Vector{Char})
+function solveLarge(N::I,X::VI,Y::VI,C::Vector{Char})::PI
     ansx = 1_000_000_000_000_000_000
     ansy = 0
     manh = 1_000_000_000_000_000_000
 
     ## First check the origin and the points nearest the origin on each line
 
-    pts2check::Set{Tuple{Int64,Int64}} = Set{Tuple{Int64,Int64}}()
+    pts2check::SPI = Set{Tuple{Int64,Int64}}()
     push!(pts2check,(0,0))
     for i in 1:N
         x=X[i]; y=Y[i]; s = x+y
@@ -40,7 +118,7 @@ function solve(N::Int64,X::Vector{Int64},Y::Vector{Int64},C::Vector{Char})
     ## Now for the regular points
     empty!(pts2check)
     for (dx,dy) in ((0,0),(0,1),(1,0),(1,1))
-        id::Vector{Int64} = []
+        id::VI = []
         good = true
         for i in 1:N
             req = C[i] == '.' ? 0 : 1
@@ -49,7 +127,7 @@ function solve(N::Int64,X::Vector{Int64},Y::Vector{Int64},C::Vector{Char})
             push!(id,i)  ## These are the interesting cases
         end
         if !good; continue; end
-        sums::Vector{Int64} = []
+        sums::VI = []
         push!(sums,-3_000_000_000_000_000)
         push!(sums, 3_000_000_000_000_000)
         for i in id; push!(sums, X[i]+Y[i]); end
@@ -91,21 +169,17 @@ function solve(N::Int64,X::Vector{Int64},Y::Vector{Int64},C::Vector{Char})
     end
     return (ansx,ansy)
 end
-            
+
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    gs()::String = rstrip(readline(infile))
-    gi()::Int64 = parse(Int64, gs())
-    gf()::Float64 = parse(Float64,gs())
-    gss()::Vector{String} = split(gs())
-    gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
-    gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
         N = gi()
-        X::Vector{Int64} = fill(0,N)
-        Y::Vector{Int64} = fill(0,N)
+        X::VI = fill(0,N)
+        Y::VI = fill(0,N)
         C::Vector{Char} = fill('.',N)
         for i in 1:N
             s = gss()
@@ -113,11 +187,22 @@ function main(infn="")
             Y[i] = parse(Int64,s[2])
             C[i] = s[3][1]
         end
-        (xans,yans) = solve(N,X,Y,C)
+        (xans,yans) = solveSmall(N,X,Y,C)
+        #(xans,yans) = solveLarge(N,X,Y,C)
         if xans == 1_000_000_000_000_000_000; print("Too damaged\n"); continue; end
         print("$xans $yans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+#test(1000,4,300,100)
+#test(1000,100,300,100)
+#test(1000,1000,3_000_000_000_000_000,1_000_000_000_000_000,false)
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
 

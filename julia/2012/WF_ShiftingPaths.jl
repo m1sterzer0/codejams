@@ -1,11 +1,24 @@
-using Random
 
-function solveSmall(N::Int64,L::Vector{Int64},R::Vector{Int64})
-    state::Int64 = 0
-    pos::Int64 = 1
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+function solveSmall(N::I,L::VI,R::VI)::I
+    state::I = 0
+    pos::I = 1
     visited::BitSet = BitSet()
-    cnt::Int64 = 0
-    while(true)
+    cnt::I = 0
+    while (true)
         if pos == N; return cnt; end
         encstate = N * state + (pos-1)
         if encstate in visited; return 0; end
@@ -17,16 +30,16 @@ function solveSmall(N::Int64,L::Vector{Int64},R::Vector{Int64})
     end
 end
 
-function solveLarge(N::Int64,L::Vector{Int64},R::Vector{Int64},ds)
-    alookup::Vector{Tuple{Int32,Int8,Int32}} = ds[1]
-    avisited::BitSet = ds[2]
-    bvisited::BitSet = ds[3]
+function solveLarge(N::I,L::VI,R::VI,working)::I
+    alookup::Vector{Tuple{Int32,Int8,Int32}} = working[1]
+    avisited::BitSet = working[2]
+    bvisited::BitSet = working[3]
     fill!(alookup,(Int32(0),Int8(0),Int32(0)))
     empty!(avisited)
     empty!(bvisited)
 
     ## Create the graph
-    adj::Vector{Vector{Int64}} = [Vector{Int64}() for i in 1:N]
+    adj::Vector{VI} = [VI() for i in 1:N]
     for i in 1:N-1
         push!(adj[L[i]],i)
         if L[i] != R[i]; push!(adj[R[i]],i); end
@@ -34,8 +47,8 @@ function solveLarge(N::Int64,L::Vector{Int64},R::Vector{Int64},ds)
 
     ## Find the closest N/2 nodes to B with BFS
     visited::Vector{Bool} = [false for i in 1:N]
-    bset = Set{Int64}()
-    q::Vector{Int64} = []
+    bset::SI = SI()
+    q::VI = []
     visited[N] = true; push!(bset,N); push!(q,N)
     while length(bset) < N ÷ 2
         if isempty(q); break; end
@@ -54,17 +67,17 @@ function solveLarge(N::Int64,L::Vector{Int64},R::Vector{Int64},ds)
     for i in 1:N; if i ∉ bset; aset[i] = true; end; end
 
     ## Bookkeepeing for state compression
-    asize::Int64 = N - length(bset)
-    bsize::Int64 = length(bset)
-    anodes::Vector{Int64} = [x for x in 1:N if aset[x]]
-    bnodes::Vector{Int64} = [x for x in 1:N if !aset[x]]
+    asize::I = N - length(bset)
+    bsize::I = length(bset)
+    anodes::VI = [x for x in 1:N if aset[x]]
+    bnodes::VI = [x for x in 1:N if !aset[x]]
     n2a::Vector{Int32} = fill(Int32(0),N)
     n2b::Vector{Int32} = fill(Int32(0),N)
     for i in 1:asize; n2a[anodes[i]] = Int32(i); end 
     for i in 1:bsize; n2b[bnodes[i]] = Int32(i); end 
 
     ## Do the solve, caching paths through the A set
-    astate::Int32,bstate::Int32,node::Int8,cnt::Int64 = (Int32(0),Int32(0),Int8(1),0)
+    astate::Int32,bstate::Int32,node::Int8,cnt::I = (Int32(0),Int32(0),Int8(1),0)
     qq::Vector{Int32} = []
     while(true)
         if node == N; return cnt; end
@@ -111,72 +124,63 @@ function solveLarge(N::Int64,L::Vector{Int64},R::Vector{Int64},ds)
     end
 end
 
-function tcgen(Nmax)
-    N = Random.rand(2:Nmax)
-    L::Vector{Int64} = [Random.rand(1:N) for i in 1:N-1]
-    R::Vector{Int64} = [Random.rand(1:N) for i in 1:N-1]
+function gencase(Nmin::I,Nmax::I)
+    N::I = rand(Nmin:Nmax)
+    L::VI = rand(1:N,N-1)
+    R::VI = rand(1:N,N-1)
     return (N,L,R)
 end
 
-function regress(ntc::Int64,Nmax)
+function test(ntc::I,Nmin::I,Nmax::I,check::Bool=true)
     alookup::Vector{Tuple{Int32,Int8,Int32}} = fill((Int32(0),Int8(0),Int32(0)),20*2^20)
     avisited::BitSet = BitSet()
     bvisited::BitSet = BitSet()
-    Random.seed!(8675309)
-    for i in 1:ntc
-        (N,L,R) = tcgen(Nmax)
-        ans1 = solveSmall(N,L,R)
-        ans2 = solveLarge(N,L,R,(alookup,avisited,bvisited))
-        if ans1 != ans2
-            print("Case $i: ERROR! $ans1 $ans2\n")
+    working = (alookup,avisited,bvisited)
+
+    pass = 0
+    for ttt in 1:ntc
+        (N,L,R) = gencase(Nmin,Nmax)
+        ans2 = solveLarge(N,L,R,working)
+        if check
             ans1 = solveSmall(N,L,R)
-            ans2 = solveLarge(N,L,R,(alookup,avisited,bvisited))
-        else
-            print("Case $i: PASS $ans1 $ans2\n")
-        end
+            if ans1 == ans2
+                 pass += 1
+            else
+                print("ERROR: ttt:$ttt ans1:$ans1 ans2:$ans2\n")
+                ans1 = solveSmall(N,L,R)
+                ans2 = solveLarge(N,L,R,working)
+            end
+       else
+           print("Case $ttt: $ans2\n")
+       end
     end
+    if check; print("$pass/$ntc passed\n"); end
 end
-
-function regress2(ntc::Int64,Nmax)
-    alookup::Vector{Tuple{Int32,Int8,Int32}} = fill((Int32(0),Int8(0),Int32(0)),20*2^20)
-    avisited::BitSet = BitSet()
-    bvisited::BitSet = BitSet()
-    Random.seed!(8675309)
-    for i in 1:ntc
-        (N,L,R) = tcgen(Nmax)
-        ans2 = solveLarge(N,L,R,(alookup,avisited,bvisited))
-        print("Case $i: $ans2\n")
-    end
-end
-
 
 function main(infn="")
+    global infile
+    infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
+    tt::I = gi()
     alookup::Vector{Tuple{Int32,Int8,Int32}} = fill((Int32(0),Int8(0),Int32(0)),20*2^20)
     avisited::BitSet = BitSet()
     bvisited::BitSet = BitSet()
-
-    infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    gs()::String = rstrip(readline(infile))
-    gi()::Int64 = parse(Int64, gs())
-    gf()::Float64 = parse(Float64,gs())
-    gss()::Vector{String} = split(gs())
-    gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
-    gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
-
-    tt = parse(Int64,readline(infile))
+    working = (alookup,avisited,bvisited)
     for qq in 1:tt
         print("Case #$qq: ")
         N = gi()
-        L::Vector{Int64} = fill(0,N-1)
-        R::Vector{Int64} = fill(0,N-1)
+        L::VI = fill(0,N-1)
+        R::VI = fill(0,N-1)
         for i in 1:N-1; L[i],R[i] = gis(); end
-        #ans = solveSmall(N,L,R)
-        ans = solveLarge(N,L,R,(alookup,avisited,bvisited))
+        ans = solveSmall(N,L,R)
+        #ans = solveLarge(N,L,R,working)
         if ans == 0; print("Infinity\n"); else; print("$ans\n"); end
     end
 end
 
-#regress(1000000,10)
-#regress(1000,20)
-#regress2(1000,40)
+Random.seed!(8675309)
 main()
+#test(1,2,10)
+#test(10,2,10)
+#test(100,2,10)
+#test(1000,2,10)
+#test(60,35,40,false)
