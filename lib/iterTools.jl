@@ -64,6 +64,88 @@ function nextpermutation(m, t, state)
     return (perm, s)
 end
 
+## From Combinations.jl (why isn't this part of the base language??)
+struct WithReplacementCombinations{T}; a::T; t::Int; end
+Base.eltype(::Type{WithReplacementCombinations{T}}) where {T} = Vector{eltype(T)}
+Base.length(c::WithReplacementCombinations) = binomial(length(c.a) + c.t - 1, c.t)
+with_replacement_combinations(a, t::Integer) = WithReplacementCombinations(a, t)
+function Base.iterate(c::WithReplacementCombinations, s = [1 for i in 1:c.t])
+    (!isempty(s) && s[1] > length(c.a) || c.t < 0) && return
+    n = length(c.a); t = c.t; comb = [c.a[si] for si in s]
+    if t > 0
+        s = copy(s)
+        changed = false
+        for i in t:-1:1
+            if s[i] < n
+                s[i] += 1; for j in (i+1):t; s[j] = s[i]; end; changed = true; break
+            end
+        end
+        !changed && (s[1] = n+1)
+    else
+        s = [n+1]
+    end
+    return (comb, s)
+end
+
+######################################################################################################
+### BEGIN COMBINATIONS ITERATOR
+### From: https://github.com/JuliaMath/Combinatorics.jl/blob/master/src/combinations.jl
+######################################################################################################
+
+struct Combinations
+    n::Int
+    t::Int
+end
+
+function Base.iterate(c::Combinations, s = [min(c.t - 1, i) for i in 1:c.t])
+    if c.t == 0 # special case to generate 1 result for t==0
+        isempty(s) && return (s, [1])
+        return
+    end
+    for i in c.t:-1:1
+        s[i] += 1
+        if s[i] > (c.n - (c.t - i))
+            continue
+        end
+        for j in i+1:c.t
+            s[j] = s[j-1] + 1
+        end
+        break
+    end
+    s[1] > c.n - c.t + 1 && return
+    (s, s)
+end
+
+Base.length(c::Combinations) = binomial(c.n, c.t)
+
+Base.eltype(::Type{Combinations}) = Vector{Int}
+
+function combinations(a, t::Integer)
+    if t < 0
+        # generate 0 combinations for negative argument
+        t = length(a) + 1
+    end
+    reorder(c) = [a[ci] for ci in c]
+    (reorder(c) for c in Combinations(length(a), t))
+end
+
+######################################################################################################
+### END COMBINATIONS ITERATOR
+### From: https://github.com/JuliaMath/Combinatorics.jl/blob/master/src/combinations.jl
+######################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
 function test1(cnt::I,n::I)
     a = collect(1:n)
     for i in 1:cnt

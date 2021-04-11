@@ -113,3 +113,68 @@ Base.isempty(h::MaxHeapEnh) = isempty(h.valtree)
 ######################################################################################################
 ### END MaxHeapEnh
 ######################################################################################################
+
+
+######################################################################################################
+### BEGIN MINHEAP CODE
+######################################################################################################
+
+function _bubbleUpMinHeap(vt::AbstractVector{T},i::Int64) where {T}
+    if i == 1; return; end
+    j::Int64 = i >> 1
+    if vt[j] > vt[i]; vt[i],vt[j] = vt[j],vt[i]; _bubbleUpMinHeap(vt,j); end
+end
+
+function _bubbleDownMinHeap(vt::AbstractVector{T},i::Int64) where {T}
+    len::Int64 = length(vt)
+    l::Int64 = i << 1; r::Int64 = l + 1
+    res1::Bool = l > len || vt[i] <= vt[l]
+    res2::Bool = r > len || vt[i] <= vt[r]
+    if res1 && res2; return;
+    elseif res1; vt[i],vt[r] = vt[r],vt[i]; _bubbleDownMinHeap(vt,r)
+    elseif res2; vt[i],vt[l] = vt[l],vt[i]; _bubbleDownMinHeap(vt,l)
+    elseif vt[l] <= vt[r]; vt[i],vt[l] = vt[l],vt[i]; _bubbleDownMinHeap(vt,l)
+    else   vt[i],vt[r] = vt[r],vt[i]; _bubbleDownMinHeap(vt,r)
+    end
+end
+
+function _minHeapify(vt::AbstractVector{T}) where {T}
+    len = length(vt)
+    for i in 2:len; _bubbleUpMinHeap(vt,i); end
+end
+
+mutable struct MinHeap{T}
+    valtree::Vector{T}
+    MinHeap{T}() where {T} = new{T}(Vector{T}())
+    function MinHeap{T}(xs::AbstractVector{T}) where {T}
+        valtree = copy(xs)
+        _minHeapify(valtree)
+        new{T}(valtree)
+    end
+end
+Base.length(h::MinHeap)  = length(h.valtree)
+Base.isempty(h::MinHeap) = isempty(h.valtree)
+top(h::MinHeap{T}) where {T} = h.valtree[1]
+function Base.sizehint!(h::MinHeap{T},s::Integer) where {T}
+    sizehint!(h.valtree,s); return h
+end
+
+function Base.push!(h::MinHeap{T},v::T) where {T} 
+    push!(h.valtree,v)
+    _bubbleUpMinHeap(h.valtree,length(h.valtree))
+    return h
+end
+
+function Base.pop!(h::MinHeap{T}) where {T}
+    v = h.valtree[1]
+    xx = pop!(h.valtree)
+    if length(h.valtree) >= 1
+        h.valtree[1] = xx
+        _bubbleDownMinHeap(h.valtree,1)
+    end
+    return v
+end
+
+######################################################################################################
+### BEGIN MINHEAP CODE
+######################################################################################################

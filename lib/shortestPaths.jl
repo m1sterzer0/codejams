@@ -7,7 +7,7 @@ const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
 ######################################################################################################
 ### BEGIN DIJKSTRA CODE (ADJ LIST)
 ######################################################################################################
-struct MinHeapDijkstraNode; n::I, t::I; end ## n is nodeID, t is time (or dist)
+struct MinHeapDijkstraNode; n::I; t::I; end ## n is nodeID, t is time (or dist)
 Base.isless(a::MinHeapDijkstraNode,b::MinHeapDijkstraNode) = a.t < b.t
 
 struct MinHeapDijkstra
@@ -68,3 +68,30 @@ end
 ######################################################################################################
 ### END DIJKSTRA CODE (ADJ LIST)
 ######################################################################################################
+
+
+## Adapted/translated from cp-algorithms -- this version is O(n^2) and assumes distances in an adj matrix
+function denseDijkstra(s::Int64,d::Vector{Int64},p::Vector{Int64},adjm::Array{Int64,2})
+    n = length(d)
+    inf::Int64 = 1000000006
+    fill!(d,inf)
+    fill!(p,-1)
+    u::Vector{Bool} = fill(false,n)
+    d[s] = 0
+    for i in 1:n
+        v::Int64 = -1
+        for j in 1:n
+            if (!u[j] && (v==-1 || d[j] < d[v])); v = j; end
+        end
+        if d[v] == inf; break; end
+        u[v] = true
+        for j in 1:n
+            if j == v; continue; end
+            if d[j] > d[v] + adjm[v,j]
+                d[j] = d[v] + adjm[v,j]
+                p[j] = v
+            end
+        end
+    end
+end
+

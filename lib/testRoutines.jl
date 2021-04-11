@@ -28,17 +28,7 @@ function test(ntc::I,Nmin::I,Nmax::I,check::Bool=true)
         ans2 = solveLarge(N,J)
         if check
             ans1 = solveSmall(N,J)
-            match = true
-            ans1arr = [parse(Float64,x) for x in split(ans1)]
-            ans2arr = [parse(Float64,x) for x in split(ans2)]
-            if length(ans1arr) != N || length(ans2arr) != N
-                match = false
-            else
-                for i in 1:N
-                    if !isApproximatelyEqual(ans1arr[i],ans2arr[i],1e-7); match = false; end
-                end
-            end
-            if match
+            if ans1 == ans2
                  pass += 1
             else
                 print("ERROR: ttt:$ttt ans1:$ans1 ans2:$ans2\n")
@@ -51,3 +41,12 @@ function test(ntc::I,Nmin::I,Nmax::I,check::Bool=true)
     end
     if check; print("$pass/$ntc passed\n"); end
 end
+
+function weightedRandChoice(seq,weights::VF,nn::I)
+    cumweights::VF = [weights[1]]
+    for i in 2:length(weights); push!(cumweights,cumweights[end]+weights[i]); end
+    res = []
+    for i in 1:nn; push!(res,seq[min(length(seq),searchsortedfirst(cumweights,cumweights[end]*rand()))]); end
+    return res
+end
+
