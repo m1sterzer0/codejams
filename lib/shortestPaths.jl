@@ -2,6 +2,7 @@ using Random
 ## Type Shortcuts (to save my wrists and fingers :))
 const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
 const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
 const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
 
 ######################################################################################################
@@ -71,15 +72,15 @@ end
 
 
 ## Adapted/translated from cp-algorithms -- this version is O(n^2) and assumes distances in an adj matrix
-function denseDijkstra(s::Int64,d::Vector{Int64},p::Vector{Int64},adjm::Array{Int64,2})
+function denseDijkstra(s::I,d::VI,p::VI,adjm::Array{I,2})
     n = length(d)
-    inf::Int64 = 1000000006
+    inf::I = 1000000006
     fill!(d,inf)
     fill!(p,-1)
-    u::Vector{Bool} = fill(false,n)
+    u::VB = fill(false,n)
     d[s] = 0
     for i in 1:n
-        v::Int64 = -1
+        v::I = -1
         for j in 1:n
             if (!u[j] && (v==-1 || d[j] < d[v])); v = j; end
         end
