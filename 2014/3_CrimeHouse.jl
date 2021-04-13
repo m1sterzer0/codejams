@@ -1,4 +1,19 @@
 
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
 ######################################################################################################
 ### BEGIN MINHEAP CODE
 ######################################################################################################
@@ -60,22 +75,18 @@ function Base.pop!(h::MinHeap{T}) where {T}
 end
 
 ######################################################################################################
-### BEGIN MINHEAP CODE
+### END MINHEAP CODE
 ######################################################################################################
 
-######################################################################################################
-### BEGIN MAIN PROGRAM
-######################################################################################################
-
-function simulate(nstart::Int64,events::Vector{Tuple{Char,Int64}},idevents::Vector{Vector{Int64}})::Bool
-    inside::Vector{Bool} = fill(false,2000)
-    nxt::Vector{Int64} = fill(1,2000)
-    extras::Int64 = 0
+function simulate(nstart::I,events::Vector{Tuple{Char,Int64}},idevents::VVI)::Bool
+    inside::VB = fill(false,2000)
+    nxt::VI = fill(1,2000)
+    extras::I = 0
     N = length(events)
 
     ## Assign the starting people to the named people with initial leave events who will be leaving soonest
-    needEnter = MinHeap{Tuple{Int64,Int64}}()
-    needLeave = MinHeap{Tuple{Int64,Int64}}()
+    needEnter = MinHeap{PI}()
+    needLeave = MinHeap{PI}()
 
     for i in 1:2000
         if !isempty(idevents[i])
@@ -158,43 +169,50 @@ function simulate(nstart::Int64,events::Vector{Tuple{Char,Int64}},idevents::Vect
     end
     return true
 end
-    
+
+function solve(N::I,dir::VC,id::VI)
+    events::Vector{Tuple{Char,I}} = []
+    idevents::VVI = [VI() for i in 1:2000]
+    for i in 1:N
+        push!(events,(dir[i],id[i]))
+        if id[i] != 0; push!(idevents[id[i]],i); end
+    end
+    net = 0
+    for i in 1:N
+        net += (events[i][1] == 'E') ? 1 : -1
+    end
+
+    if simulate(0,events,idevents); return "$net"; end
+    if !simulate(1000,events,idevents); return "CRIME TIME"; end
+    ##simulate(5,events,idevents)
+
+    l,u = 0,1000
+    while u-l > 1
+        m = (l+u) ÷ 2
+        if simulate(m,events,idevents); u=m; else; l=m; end
+    end
+    return "$(net + u)"
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N = parse(Int64,readline(infile))
-        events::Vector{Tuple{Char,Int64}} = []
-        idevents::Vector{Vector{Int64}} = []
-        for i in 1:2000; push!(idevents,[]); end
+        N = gi()
+        dir::VC = fill('.',N)
+        id::VI = fill(0,N)
         for i in 1:N
-            tokens = split(readline(infile))
-            action::Char = tokens[1][1]
-            id::Int64 = parse(Int64,tokens[2])
-            push!(events,(action,id))
-            if id != 0; push!(idevents[id],i); end
+            s::VS = gss()
+            dir[i] = s[1][1]
+            id[i] = parse(Int64,s[2])
         end
-        net = 0
-        for i in 1:N
-            net += (events[i][1] == 'E') ? 1 : -1
-        end
-
-        if simulate(0,events,idevents);     print("$net\n");       continue; end
-        if !simulate(1000,events,idevents); print("CRIME TIME\n"); continue; end
-        simulate(5,events,idevents)
-
-        l,u = 0,1000
-        while u-l > 1
-            m = (l+u) ÷ 2
-            if simulate(m,events,idevents); u=m
-            else; l=m
-            end
-        end
-        ans = net + u
+        ans = solve(N,dir,id)
         print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
 

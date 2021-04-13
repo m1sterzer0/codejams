@@ -1,3 +1,19 @@
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
 ######################################################################################################
 ### Key observation
 ### * So that we work with integers, we reformulate and assume we get one coin per game, a reroll costs game
@@ -24,17 +40,17 @@
 ###   -- OPEN QUESTION: Should we ever stochastically choose?  For now, assume no, but not convinced yet.
 ######################################################################################################
 
-function tryit(Q::Float64,avgtopk::Vector{Float64},N::Int64,R::Int64,G::Int64)::Bool
+function tryit(Q::F,avgtopk::VF,N::I,R::I,G::I)::Bool
     if N == 1; return avgtopk[N] > Q; end
-    A::Vector{Float64} = []
+    A::VF = []
     for i in 0:G-1; push!(A,avgtopk[N]-Q); end
     for i in G:R*G
         idx = i+1
-        sumprev::Float64 = sum(A[idx-G:idx-1])
-        best::Float64 = -1e100
+        sumprev::F = sum(A[idx-G:idx-1])
+        best::F = -1e100
         for j in 1:N-1 ## If N > 1, always reroll worst, never reroll best
-            probReroll::Float64 = Float64(j)/Float64(N)
-            candidate::Float64 = probReroll / (1.0 - probReroll) * sumprev + (avgtopk[N-j]-Q)
+            probReroll::F = Float64(j)/Float64(N)
+            candidate::F = probReroll / (1.0 - probReroll) * sumprev + (avgtopk[N-j]-Q)
             best = max(best,candidate)
         end
         push!(A,best)
@@ -42,34 +58,39 @@ function tryit(Q::Float64,avgtopk::Vector{Float64},N::Int64,R::Int64,G::Int64)::
     return A[end] >= 0
 end
 
+function solve(N::I,R::I,G::I,prechamps::VF)
+    champs::VF = copy(prechamps)
+    sort!(champs,rev=true)
+    avgtopk::VF = fill(0.00,N)
+    ss::F = 0.0
+    for i in 1:N
+        ss += champs[i]
+        avgtopk[i] = ss / Float64(i)
+    end
+
+    Qmin,Qmax = 0.00,1.000
+    for i in 1:50
+        Qmid = (Qmin+Qmax)*0.5
+        if tryit(Qmid,avgtopk,N,R,G); Qmin = Qmid
+        else; Qmax = Qmid
+        end
+    end
+    return Qmin
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N::Int64,R::Int64,G::Int64= [parse(Int64,x) for x in split(readline(infile))]
-        champs::Vector{Float64} = [parse(Float64,x) for x in split(readline(infile))]
-        reverse!(sort!(champs))
-
-        avgtopk::Vector{Float64} = fill(0.00,N)
-        ss::Float64 = 0.0
-        for i in 1:N
-            ss += champs[i]
-            avgtopk[i] = ss / Float64(i)
-        end
-
-        Qmin,Qmax = 0.00,1.000
-        for i in 1:50
-            Qmid = (Qmin+Qmax)*0.5
-            if tryit(Qmid,avgtopk,N,R,G); Qmin = Qmid
-            else; Qmax = Qmid
-            end
-        end
-        print("$Qmin\n")
+        N,R,G = gis()
+        champs::VF = gfs()
+        ans = solve(N,R,G,champs)
+        print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
-    
-
 

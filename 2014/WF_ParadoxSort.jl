@@ -1,20 +1,20 @@
-######################################################################################################
-### Observations required.
-### Assume we have a directional graph where we have a --> b if, when presented with candies a & b, 
-###    we prefer a.
-### 1) (EASY) A candy can only precede T in a valid permutation if it can be reached in a DFS from T 
-### 2) (HARDER) A post-order traversal of a DFS from T that hits every node is a valid permutation.
-### 3) (HARDEST) Lets say we want to test if we have a valid prefix.  Then we remove all nodes in the
-###              prefix, simulate the prefix to find the candy we are holding, and then do a DFS
-###              search.  If the union of the nodes hit in the DFS + the remianing children of the
-###              candy we are holding covers all remaining nodes, then we have a valid prefix. 
-### Observation 3 sets forward the algorithm
-###
-### Algorithm is O^4, which will work with N == 100
-###        
-######################################################################################################
 
-function dodfs(n::Int64,t::Int64,N::Int64,adjm::Array{Bool,2},sb::Vector{Int64})
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+function dodfs(n::I,t::I,N::I,adjm::Array{Bool,2},sb::VI)
     sb[n] = 1
     if n != t  ## Don't trace through t
         for i in 1:N
@@ -25,7 +25,7 @@ function dodfs(n::Int64,t::Int64,N::Int64,adjm::Array{Bool,2},sb::Vector{Int64})
     end
 end
 
-function tryit(perm::Vector{Int64},A::Int64,N::Int64,adjm::Array{Bool,2},sb::Vector{Int64})::Bool
+function tryit(perm::VI,A::I,N::I,adjm::Array{Bool,2},sb::VI)::Bool
     fill!(sb,0)
     cur = perm[1]; sb[cur] = 2
     for v in perm[2:end]
@@ -47,37 +47,41 @@ function tryit(perm::Vector{Int64},A::Int64,N::Int64,adjm::Array{Bool,2},sb::Vec
     return true
 end
 
+function solve(N::I,A::I,board::Array{Char,2})::String
+    A += 1
+    adjm::Array{Bool,2} = fill(false,N,N)
+    sb::VI = fill(0,N)
+    for i in 1:N; for j in 1:N
+        if board[i,j] == 'Y'; adjm[i,j] = true; end
+    end; end
+    dodfs(A,-1,N,adjm,sb)
+    if 0 in sb; return "IMPOSSIBLE"; end
+    perm::VI = []
+    for i in 1:N
+        for j in 1:N
+            if j in perm; continue; end
+            push!(perm,j)
+            if tryit(perm,A,N,adjm,sb); break; end
+            pop!(perm)
+        end
+    end
+    ans = join([x-1 for x in perm]," ")
+    return "$ans"
+end
 
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        ans = 0
-        N,A = [parse(Int64,x) for x in split(readline(infile))]
-        A += 1
-        adjm::Array{Bool,2} = fill(false,N,N)
-        sb::Vector{Int64} = fill(0,N)
-        for i in 1:N
-            s = readline(infile)
-            for (j,c) in enumerate(s)
-                if c == 'Y'; adjm[i,j] = true; end
-            end
-        end
-        dodfs(A,-1,N,adjm,sb)
-        if 0 in sb; print("IMPOSSIBLE\n"); continue; end
-        perm::Vector{Int64} = []
-        for i in 1:N
-            for j in 1:N
-                if j in perm; continue; end
-                push!(perm,j)
-                if tryit(perm,A,N,adjm,sb); break; end
-                pop!(perm)
-            end
-        end
-        ans = join([x-1 for x in perm]," ")
+        N,A = gis()
+        board::Array{Char,2} = fill('.',N,N)
+        for i in 1:N; board[i,:] = [x for x in gs()]; end
+        ans = solve(N,A,board)
         print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()

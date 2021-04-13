@@ -1,87 +1,20 @@
+######################################################################################################
+### BEGIN MAIN PROGRAM
+######################################################################################################
 
-using Random
-infile = stdin
-## Type Shortcuts (to save my wrists and fingers :))
-const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
-const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
-const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
-const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
-
-gs()::String = rstrip(readline(infile))
-gi()::Int64 = parse(Int64, gs())
-gf()::Float64 = parse(Float64,gs())
-gss()::Vector{String} = split(gs())
-gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
-gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
-
-function negamax(mypos::I,otherpos::I,myscoresofar::I,
-                 mystuck::Bool,otherstuck::Bool,
-                 C::VI, edgesb::Array{Bool,2}, adj::VVI,
-                 alpha::I,beta::I)
+function main(infn="")
     inf::Int64 = 1000000007  ## Biggset score should be 500 * 10k = 5M.
-    if mystuck && otherstuck; return myscoresofar; end
-    if mystuck; return -negamax(otherpos,mypos,-myscoresofar,otherstuck,mystuck,
-                                C, edgesb, adj, -beta, -alpha); end
-    value::I,incgold::I,n2::I = -inf,C[mypos],0
-    C[mypos] = 0;  myscoresofar += incgold; mystuck = true
-    for n2::I in adj[mypos]
-        if !edgesb[mypos,n2]; continue; end
-        mystuck = false
-        edgesb[mypos,n2] = edgesb[n2,mypos] = false
-        value = max(value,-negamax(otherpos,n2,-myscoresofar,otherstuck,mystuck,
-                                   C, edgesb, adj, -beta, -alpha))
-        edgesb[mypos,n2] = edgesb[n2,mypos] = true
-        alpha = max(alpha,value)
-        if alpha >= beta; break; end
-    end
-    if mystuck; value = -negamax(otherpos,mypos,-myscoresofar,otherstuck,mystuck,
-                                 C, edgesb, adj, -beta, -alpha);  end
-    C[mypos] = incgold
-    return value
-end
-     
+    N::Int64                    = 0
+    C::Vector{Int64}            = fill(0,500)
+    maxGold::Vector{Int64}      = fill(-inf,1000)
+    bestFour::Array{Int64,2}    = fill(-1,500,4)
+    nextNode::Array{Int64,2}    = fill(0,500,500)
+    sumCoins::Array{Int64,2}    = fill(-inf,500,500)
+    bestTwoEdge::Array{Int64,2} = fill(-inf,1000,1000)
+    doitCache::Array{Int64,2}   = fill(-inf,1000,1000)
+    edgesb::Array{Int64,2}      = fill(0,500,500)
 
-function solveSmall(N::I,preC::VI,X::VI,Y::VI)::I
-    C::VI = copy(preC)
-    edgesb::Array{Bool,2} = fill(false,N,N)
-    adj::VVI = [VI() for i in 1:N]
-    for i in 1:N-1
-        edgesb[X[i],Y[i]] = edgesb[Y[i],X[i]] = true
-        push!(adj[X[i]],Y[i]); push!(adj[Y[i]],X[i])
-    end
-
-    inf::Int64 = 1000000007  ## Biggset score should be 500 * 10k = 5M.
-    alpha = -inf
-    for i in 1:N
-        beta = inf
-        for j in 1:N
-            value = negamax(i,j,0,false,false,C,edgesb,adj,alpha,beta)
-            beta = min(beta,value)
-            if alpha > beta; break; end
-        end
-        alpha = max(alpha,beta)
-    end
-    return alpha
-end
-
-function preworkLarge()
-    inf::Int64 = 1000000007  ## Biggset score should be 500 * 10k = 5M.
-    C::VI                   = fill(0,500)
-    maxGold::VI             = fill(-inf,1000)
-    bestFour::Array{I,2}    = fill(-1,500,4)
-    nextNode::Array{I,2}    = fill(0,500,500)
-    sumCoins::Array{I,2}    = fill(-inf,500,500)
-    bestTwoEdge::Array{I,2} = fill(-inf,1000,1000)
-    doitCache::Array{I,2}   = fill(-inf,1000,1000)
-    edgesb::Array{I,2}      = fill(0,500,500)
-    adj::VVI                = []
-    return (C,maxGold,bestFour,nextNode,sumCoins,bestTwoEdge,doitCache,edgesb,adj)
-end
-
-function solveLarge(N::I,preC::VI,X::VI,Y::VI,working)::I
-    inf::Int64 = 1000000007  ## Biggset score should be 500 * 10k = 5M.
-    (C::VI,maxGold::VI,bestFour::Array{I,2},nextNode::Array{I,2},sumCoins::Array{I,2},
-     bestTwoEdge::Array{I,2},doitCache::Array{I,2},edgesb::Array{I,2},adj::VVI) = working
+    adj::Vector{Vector{Int64}}  = []
 
     function getMaxGold(mypos::Int64,myprev::Int64)::Int64
         eid = edgesb[mypos,myprev]
@@ -250,59 +183,43 @@ function solveLarge(N::I,preC::VI,X::VI,Y::VI,working)::I
         return ans
     end
 
-    function resetStorage()
-        fill!(C,0); fill!(maxGold,-inf); fill!(bestFour,-1); fill!(nextNode,0)
-        fill!(sumCoins,-inf); fill!(bestTwoEdge,-inf); fill!(edgesb,0);
-        fill!(doitCache,-inf); empty!(adj)
-    end
-
-    resetStorage()
-    for i in 1:N; push!(adj,VI()); end
-    for i in 1:N; C[i] = preC[i]; end
-    for i in 1:N-1
-        edgesb[X[i],Y[i]] = X[i]
-        edgesb[Y[i],X[i]] = N+X[i]
-        push!(adj[X[i]],Y[i])
-        push!(adj[Y[i]],X[i])
-    end
-    alpha = -inf
-    for i in 1:N
-        beta = inf
-        for j in 1:N
-            value = doit(i,0,j,0)
-            beta = min(beta,value)
-            if alpha > beta; break; end
-        end
-        alpha = max(alpha,beta)
-    end
-    return alpha
-end
-
-function main(infn="")
-    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    workingLarge = preworkLarge()
-    tt::I = gi()
+    tt = parse(Int64,readline(infile))
     for qq in 1:tt
+        fill!(maxGold,-inf)
+        fill!(bestFour,-1)
+        fill!(nextNode,0)
+        fill!(sumCoins,-inf)
+        fill!(bestTwoEdge,-inf)
+        fill!(edgesb,0)
+        fill!(doitCache,-inf)
+        fill!(C,0)
+        empty!(adj)
         print("Case #$qq: ")
-        N = gi()
-        C::VI = fill(0,N)
-        for i in 1:N; C[i] = gi(); end
-        X::VI = fill(0,N-1)
-        Y::VI = fill(0,N-1)
-        for i in 1:N-1; X[i] = i; Y[i] = gi(); end
-        #ans = solveSmall(N,C,X,Y)
-        ans = solveLarge(N,C,X,Y,workingLarge)
-        print("$ans\n")
+        N = parse(Int64,readline(infile))
+        for i in 1:N; C[i] = parse(Int64,readline(infile)); end
+        for i in 1:N; push!(adj,[]); end
+        for i in 1:N-1
+            j = parse(Int64,readline(infile))
+            edgesb[i,j] = i
+            edgesb[j,i] = N+i
+            push!(adj[i],j)
+            push!(adj[j],i)
+        end
+
+        alpha = -inf
+        for i in 1:N
+            beta = inf
+            for j in 1:N
+                value = doit(i,0,j,0)
+                beta = min(beta,value)
+                if alpha > beta; break; end
+            end
+            alpha = max(alpha,beta)
+        end
+        print("$alpha\n")
     end
 end
 
-Random.seed!(8675309)
 main()
-
-#using Profile, StatProfilerHTML
-#Profile.clear()
-#@profile main("B.in")
-#Profile.clear()
-#@profilehtml main("B.in")
 

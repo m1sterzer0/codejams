@@ -1,13 +1,23 @@
-######################################################################################################
-### BEGIN MAIN PROGRAM
-######################################################################################################
 
-function getCenter(N::Int64,adj::Vector{Set{Int64}}) 
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+function getCenter(N::I,adj::Vector{SI})::VI 
     if N == 1; return [1]; end
     if N == 2; return [1,2]; end
-    edgecnt::Vector{Int64} = fill(0,N)
-
-    for i in 1:N; edgecnt[i] = length(adj[i]); end
+    edgecnt::VI = [length(adj[i]) for i in 1:N]
     numleft = N
     q = [x for x in 1:N if edgecnt[x] == 1]
     while(true)
@@ -26,11 +36,11 @@ function getCenter(N::Int64,adj::Vector{Set{Int64}})
     end
 end
 
-function doTraverse(n::Int64,p::Int64,adj::Vector{Set{Int64}},color::Vector{Char},sbCenterOk::Vector{Bool},sbRootOk::Vector{Bool})::String
+function doTraverse(n::I,p::I,adj::Vector{SI},color::VC,sbCenterOk::VB,sbRootOk::VB)::String
     prefix = join(['d',color[n]])
     meat = ""
     suffix = "u"
-    childNodes::Vector{Int64} = []
+    childNodes::VI = []
     for c in adj[n]
         if c == p; continue; end
         push!(childNodes,c)
@@ -45,7 +55,7 @@ function doTraverse(n::Int64,p::Int64,adj::Vector{Set{Int64}},color::Vector{Char
     else
         ## Don't stick the recursion in an iterator -- it chews up the stack
         #bufstrings::Vector{Tuple{String,Int64}} = [(doTraverse(x,n,adj,color,sbCenterOk,sbRootOk),x) for x in childNodes]
-        bufstrings::Vector{Tuple{String,Int64}} = []
+        bufstrings::Vector{Tuple{String,I}} = []
 
         for x in childNodes
             ss = doTraverse(x,n,adj,color,sbCenterOk,sbRootOk)
@@ -77,45 +87,78 @@ function doTraverse(n::Int64,p::Int64,adj::Vector{Set{Int64}},color::Vector{Char
     return prefix*meat*suffix
 end
 
-function main(infn="")
-    infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
-    for qq in 1:tt
-        print("Case #$qq: ")
-        N = parse(Int64,readline(infile))
-        adj::Vector{Set{Int64}} = [Set{Int64}() for x in 1:N+1]
-        color::Vector{Char} = fill('.',N+1)
-        sbCenterOk::Vector{Bool} = fill(false,N+1)
-        sbRootOk::Vector{Bool} = fill(false,N+1)
-        for i in 1:N
-            color[i] = readline(infile)[1]
-        end
-        for i in 1:N-1
-            ii,jj = [parse(Int64,x) for x in split(readline(infile))]
-            push!(adj[ii],jj)
-            push!(adj[jj],ii)
-        end
-        center = getCenter(N,adj)
-        if length(center) == 1
-            n1 = center[1]
-            doTraverse(n1,-1,adj,color,sbCenterOk,sbRootOk)
-            res = sbRootOk[n1] ? "SYMMETRIC" : "NOT SYMMETRIC"
-            print("$res\n")
-        else
-            ## Splice in a dummy node between these two that acts as the virtual root
-            ## of the tree on the center line.
-            n1,n2 = center[1],center[2]
-            delete!(adj[n1],n2)
-            delete!(adj[n2],n1)
-            push!(adj[n1],N+1)
-            push!(adj[N+1],n1)
-            push!(adj[n2],N+1)
-            push!(adj[N+1],n2)
-            doTraverse(N+1,-1,adj,color,sbCenterOk,sbRootOk)
-            res = sbRootOk[N+1] ? "SYMMETRIC" : "NOT SYMMETRIC"
-            print("$res\n")
-        end
+function solve(N::I,precolor::VC,X::VI,Y::VI)::String
+    color::VC = copy(precolor); push!(color,'.')
+    adj::Vector{SI} = [SI() for i in 1:N+1]
+    for i in 1:N-1
+        push!(adj[X[i]],Y[i])
+        push!(adj[Y[i]],X[i])
+    end
+    sbCenterOk::VB = fill(false,N+1)
+    sbRootOk::VB = fill(false,N+1)
+    center = getCenter(N,adj)
+    if length(center) == 1
+        n1 = center[1]
+        doTraverse(n1,-1,adj,color,sbCenterOk,sbRootOk)
+        return sbRootOk[n1] ? "SYMMETRIC" : "NOT SYMMETRIC"
+    else
+        ## Splice in a dummy node between these two that acts as the virtual root
+        ## of the tree on the center line.
+        n1,n2 = center[1],center[2]
+        delete!(adj[n1],n2)
+        delete!(adj[n2],n1)
+        push!(adj[n1],N+1)
+        push!(adj[N+1],n1)
+        push!(adj[n2],N+1)
+        push!(adj[N+1],n2)
+        doTraverse(N+1,-1,adj,color,sbCenterOk,sbRootOk)
+        return sbRootOk[N+1] ? "SYMMETRIC" : "NOT SYMMETRIC"
     end
 end
 
+function gencase(Nmin::I,Nmax::I,Cmin::I,Cmax::I)
+    N = rand(Nmin:Nmax)
+    nc = rand(Cmin:Cmax)
+    scolors = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[1:nc]
+    acolors = [x for x in scolors]
+    colors::VC = [rand(acolors) for i in 1:N]
+    nodes = shuffle(collect(1:N))
+    X::VI = fill(0,N-1)
+    Y::VI = fill(0,N-1)
+    for i in 2:N
+        j = rand(1:i-1)
+        X[i-1] = nodes[i]
+        Y[i-1] = nodes[j]
+    end
+    return (N,colors,X,Y)
+end
+
+function test(ntc::I,Nmin::I,Nmax::I,Cmin::I,Cmax::I)
+    for ttt in 1:ntc
+        (N,colors,X,Y) = gencase(Nmin,Nmax,Cmin,Cmax)
+        ans = solve(N,colors,X,Y)
+        print("Case #$ttt: $ans\n")
+    end
+end
+
+function main(infn="")
+    global infile
+    infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
+    tt::I = gi()
+    for qq in 1:tt
+        print("Case #$qq: ")
+        N = gi()
+        color::VC = []
+        for i in 1:N; push!(color,gs()[1]); end
+        X::VI = fill(0,N-1)
+        Y::VI = fill(0,N-1)
+        for i in 1:N-1; X[i],Y[i] = gis(); end
+        ans = solve(N,color,X,Y)
+        print("$ans\n")
+    end
+end
+
+Random.seed!(8675309)
 main()
+#test(1000,2,12,1,3)
+
