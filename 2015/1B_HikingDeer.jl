@@ -1,4 +1,19 @@
 
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
 ######################################################################################################
 ### BEGIN MINHEAP CODE
 ######################################################################################################
@@ -60,72 +75,63 @@ function Base.pop!(h::MinHeap{T}) where {T}
 end
 
 ######################################################################################################
-### Key observations
-### -- The N^2 solution is easy.  We need something better.
-### -- If we go very fast, we will pass all of the hikers exactly once
-### -- As we slow down, two things happen
-###    --- There now will be hikers that we never pass
-###    --- Some hikers will now pass us multiple times
-### -- KEY: we can ignore iterating on our speed and instead just look at finish line "events"
-###    -- Start with the "very fast speed" case and assume that we pass H hikers
-###    -- As hikers cross the finish line, consider the case that we reduce our speed to cross the
-###       finish line just after that group hikers
-###    -- The first time a hiker crosses the finish line, this is a good event for us, as it prevents
-###       us from passing that hiker.
-###    -- Any subsequent time that same hiker crosses the finish line is bad for us, as this means the
-###       hiker has crossed our path once.
-### -- KEY2: There are only H good events, and an infinite number of bad events
-###    -- we should never process more than 2H events, as it can't get any better.
-### -- KEY3: We don't have to store all the events at once.  Instead we can use a MinHeap and 
-###          add "the next lap" after we process the current event.
+### BEGIN END CODE
 ######################################################################################################
 
-mutable struct MyEvent
-    offset::Int64
-    m::Int64
+struct MyEvent; offset::I; m::I; end
+Base.string(a::MyEvent) = "($(a.offset) $(a.m))"
+Base.isless(a::MyEvent,b::MyEvent)::Bool  = Int128(a.offset) * Int128(a.m) <  Int128(b.offset) * Int128(b.m)
+Base.:(==)(a::MyEvent,b::MyEvent)::Bool = Int128(a.offset) * Int128(a.m) == Int128(b.offset) * Int128(b.m)
+
+function solve(N::I,D::VI,H::VI,M::VI)
+    goodEvents = MinHeap{MyEvent}()
+    badEvents  = MinHeap{MyEvent}()
+    for i in 1:N
+        for j in 1:H[i]
+            push!(goodEvents,MyEvent(360-D[i],M[i]+j-1))
+        end
+    end
+    numHikers = length(goodEvents)
+    cur,best = numHikers,numHikers
+    for i in 1:2*numHikers
+        if isempty(badEvents) || (!isempty(goodEvents) && top(goodEvents) < top(badEvents))
+            xx = top(goodEvents)
+            cur -= 1
+            push!(badEvents,MyEvent(xx.offset+360,xx.m))
+            pop!(goodEvents)
+        else
+            xx = top(badEvents)
+            cur += 1
+            push!(badEvents,MyEvent(xx.offset+360,xx.m))
+            pop!(badEvents)
+        end
+        best = min(cur,best)
+    end
+    return best
 end
 
-Base.string(a::MyEvent) = "($(a.offset) $(a.m))"
-Base.:(<)(a::MyEvent,b::MyEvent)::Bool  = Int128(a.offset) * Int128(a.m) <  Int128(b.offset) * Int128(b.m)
-Base.:(<=)(a::MyEvent,b::MyEvent)::Bool = Int128(a.offset) * Int128(a.m) <= Int128(b.offset) * Int128(b.m)
-Base.:(==)(a::MyEvent,b::MyEvent)::Bool = Int128(a.offset) * Int128(a.m) == Int128(b.offset) * Int128(b.m)
-Base.:(>)(a::MyEvent,b::MyEvent)::Bool  = Int128(a.offset) * Int128(a.m) >  Int128(b.offset) * Int128(b.m)
-Base.:(>=)(a::MyEvent,b::MyEvent)::Bool = Int128(a.offset) * Int128(a.m) >= Int128(b.offset) * Int128(b.m)
-Base.:(!=)(a::MyEvent,b::MyEvent)::Bool = Int128(a.offset) * Int128(a.m) != Int128(b.offset) * Int128(b.m)
-
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N = parse(Int64,readline(infile))
-        goodEvents = MinHeap{MyEvent}()
-        badEvents = MinHeap{MyEvent}()
-        for i in 1:N
-            D,H,M = [parse(Int64,x) for x in split(readline(infile))]
-            for j in 1:H
-                push!(goodEvents,MyEvent(360-D,M+j-1))
-            end
-        end
-        numHikers = length(goodEvents)
-        cur,best = numHikers,numHikers
-        for i in 1:2*numHikers
-
-            if isempty(badEvents) || (!isempty(goodEvents) && top(goodEvents) < top(badEvents))
-                xx = top(goodEvents)
-                cur -= 1
-                push!(badEvents,MyEvent(xx.offset+360,xx.m))
-                pop!(goodEvents)
-            else
-                xx = top(badEvents)
-                cur += 1
-                push!(badEvents,MyEvent(xx.offset+360,xx.m))
-                pop!(badEvents)
-            end
-            best = min(cur,best)
-        end
-        print("$best\n")
+        N = gi()
+        D::VI = fill(0,N)
+        H::VI = fill(0,N)
+        M::VI = fill(0,N)
+        for i in 1:N; D[i],H[i],M[i] = gis(); end
+        ans = solve(N,D,H,M)
+        print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

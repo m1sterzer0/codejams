@@ -68,13 +68,13 @@ end
 ## BEGIN Dinic's Max Flow
 ################################################################
 
-function dinic(n::Int64, s::Int64, t::Int64, edgeList::Vector{Tuple{Int64,Int64,Int64}})::Int64
+function dinic(n::I, s::I, t::I, edgeList::Vector{TI}})::I
     myinf = typemax(Int64)
     nume = size(edgeList,1)
     adj,newEdgeList = _dinicBuildAdj(n,edgeList)
-    level::Vector{Int64} = [0 for i in 1:n]
-    next::Vector{Int64} = [0 for i in 1:n]
-    maxflow::Int64 = 0
+    level::VI = [0 for i in 1:n]
+    next::VI = [0 for i in 1:n]
+    maxflow::I = 0
     while(_dinicBfs(s,t,newEdgeList,adj,level))
         fill!(next,1)
         f = _dinicDfs(s,t,nume,newEdgeList,adj,level,next,myinf)
@@ -86,10 +86,10 @@ function dinic(n::Int64, s::Int64, t::Int64, edgeList::Vector{Tuple{Int64,Int64,
     return maxflow
 end
 
-function _dinicBuildAdj(n::Int64,edgeList::Vector{Tuple{Int64,Int64,Int64}})
+function _dinicBuildAdj(n::I,edgeList::Vector{TI})
     ne = length(edgeList)
-    newEdgeList::Array{Int64,2} = fill(0,2*ne,3)
-    adj::Vector{Vector{Int64}} = [Vector{Int64}() for x in 1:n]
+    newEdgeList::Array{I,2} = fill(0,2*ne,3)
+    adj::VVI = [VI() for x in 1:n]
     for i in 1:ne
         (n1,n2,c) = edgeList[i]
         newEdgeList[i,:] = [n1,n2,c]
@@ -100,10 +100,10 @@ function _dinicBuildAdj(n::Int64,edgeList::Vector{Tuple{Int64,Int64,Int64}})
     return adj,newEdgeList
 end
     
-function _dinicBfs(s::Int64, t::Int64, edgeList::Array{Int64,2}, adj::Vector{Vector{Int64}}, level::Vector{Int64})
+function _dinicBfs(s::I, t::I, edgeList::Array{I,2}, adj::VVI, level::VI)
     fill!(level,-1)
     level[s] = 0
-    q::Vector{Int64} = [s]
+    q::VI = [s]
     while(!isempty(q))
         nn = pop!(q)
         for eid in adj[nn]
@@ -117,7 +117,7 @@ function _dinicBfs(s::Int64, t::Int64, edgeList::Array{Int64,2}, adj::Vector{Vec
     return level[t] != -1
 end
 
-function _dinicDfs(n::Int64, t::Int64, nume::Int64, edgeList::Array{Int64,2}, adj::Vector{Vector{Int64}}, level::Vector{Int64}, next::Vector{Int64}, flow::Int64)::Int64
+function _dinicDfs(n::I, t::I, nume::I, edgeList::Array{I,2}, adj::VVI, level::VI, next::VI, flow::I)::I
     if n == t; return flow; end
     ne = length(adj[n])
     while next[n] <= ne
@@ -136,7 +136,6 @@ function _dinicDfs(n::Int64, t::Int64, nume::Int64, edgeList::Array{Int64,2}, ad
     end
     return 0
 end
-
 
 ################################################################
 ## END Dinic's Max Flow
