@@ -1,36 +1,45 @@
-using Printf
 
-######################################################################################################
-### Observations
-### If we split that letters into 4 classes (by letter and parity)
-###     Ce -- C's in even numbered positions
-###     Co -- C's in odd numbered positions
-###     Je -- J's in even numbered positions
-###     Jo -- J's in odd numbered positions
-### We notice that every 10 must be achieved either by matching a Je<->Jo or Ce<->Co (since, because
-### of the "stack" nature of the left over problem, there must be an even number of steps between these
-### two events).  We also notice we should never get anything less than 5 (e.g. can always pick up an
-### "in-mood" problem).  Thus, the upper bound is 5*((Ce+Co+Je+Jo) ÷ 2 + min(Ce,Co) + min(Je,Jo)).
-###
-### We also notice that this bound is realizable by taking adjacent matches and pairing
-### them for a 10-point turn-in and then removing them from the (linked) list.  This operation
-### doesn't change the parity of the positions of any of the remaining items and always pairs a Ce<->Co or
-### Je<->Jo.  Once there are no more matches, we know that min(Ce,Co) == 0 and min(Je,Jo) == 0.
-######################################################################################################
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+function solve(S::String)::I
+    co::I = count(x->x=='C', S[1:2:end])
+    ce::I = count(x->x=='C', S[2:2:end])
+    jo::I = count(x->x=='J', S[1:2:end])
+    je::I = count(x->x=='J', S[2:2:end])
+    return 5 * ( (ce + co + je + jo) ÷ 2 + min(je,jo) + min(ce,co) )
+end
 
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        S = rstrip(readline(infile))
-        co = count(x->x=='C', S[1:2:end])
-        ce = count(x->x=='C', S[2:2:end])
-        jo = count(x->x=='J', S[1:2:end])
-        je = count(x->x=='J', S[2:2:end])
-        ans = 5 * ( (ce + co + je + jo) ÷ 2 + min(je,jo) + min(ce,co) )
+        S = gs()
+        ans = solve(S)
         print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

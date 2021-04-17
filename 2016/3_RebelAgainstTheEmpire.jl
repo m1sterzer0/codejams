@@ -1,252 +1,113 @@
-using Printf
-using Profile
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
 
 ######################################################################################################
-### 1) We can always jump to a planet and immediately jump back, so the S constraint really just
-###    applies if we get stuck on an asteroid and can't jump.  For this case, we just split the nodes
-### 2) We do a binary search on the distance    
+### BEGIN MINHEAP CODE
 ######################################################################################################
 
-
-######################################################################################################
-### BEGIN BINARY HEAP LIBRARY
-### Largely copied from https://github.com/JuliaCollections/DataStructures.jl/blob/master/src/heaps/binary_heap.jl
-######################################################################################################
-module BinHeaps
-
-import Base: <, <=, ==, length, isempty, iterate,
-             show, dump, empty!, getindex, setindex!, get, get!,
-             in, haskey, keys, merge, copy, cat, collect,
-             push!, pop!, pushfirst!, popfirst!, insert!, lastindex,
-             union!, delete!, similar, sizehint!, empty, append!,
-             isequal, hash, map, filter, reverse, 
-             first, last, eltype, getkey, values, sum,
-             merge, merge!,
-             #peek, lt, Ordering, ForwardOrdering, Forward, ReverseOrdering, Reverse, Lt, 
-             isless, union, intersect, symdiff, setdiff, issubset,
-             searchsortedfirst, searchsortedlast, in,
-             eachindex, keytype, valtype, minimum, maximum, size
-
-export AbstractHeap, compare, extract_all!
-export BinaryHeap, BinaryMinHeap, BinaryMaxHeap, nlargest, nsmallest
-
-abstract type AbstractHeap{VT} end
-abstract type AbstractMutableHeap{VT,HT} <: AbstractHeap{VT} end
-abstract type AbstractMinMaxHeap{VT} <: AbstractHeap{VT} end
-struct LessThan; end
-struct GreaterThan; end
-compare(c::LessThan,    x, y) = x < y
-compare(c::GreaterThan, x, y) = x > y
-
-function _heapBubbleUp!(comp::Comp, valtree::Array{T}, i::Int) where {Comp,T}
-    i0::Int = i
-    v = valtree[i]
-    while i > 1  # nd is not root
-        p = i >> 1
-        vp = valtree[p]
-        if !compare(comp,v,vp); break; end
-        valtree[i] = vp
-        i = p
-    end
-    if i != i0; valtree[i] = v; end
+function _bubbleUpMinHeap(vt::AbstractVector{T},i::Int64) where {T}
+    if i == 1; return; end
+    j::Int64 = i >> 1
+    if vt[j] > vt[i]; vt[i],vt[j] = vt[j],vt[i]; _bubbleUpMinHeap(vt,j); end
 end
 
-function _heapBubbleDown!(comp::Comp, valtree::Array{T}, i::Int) where {Comp,T}
-    v::T = valtree[i]
-    swapped = true
-    n = length(valtree)
-    last_parent = n >> 1
-
-    while swapped && i <= last_parent
-        lc = i << 1
-        if lc < n   # contains both left and right children
-            rc = lc + 1
-            lv = valtree[lc]
-            rv = valtree[rc]
-            if compare(comp, rv, lv)
-                if compare(comp, rv, v)
-                    valtree[i] = rv
-                    i = rc
-                else
-                    swapped = false
-                end
-            else
-                if compare(comp, lv, v)
-                    valtree[i] = lv
-                    i = lc
-                else
-                    swapped = false
-                end
-            end
-        else        # contains only left child
-            lv = valtree[lc]
-            if compare(comp, lv, v)
-                valtree[i] = lv
-                i = lc
-            else
-                swapped = false
-            end
-        end
+function _bubbleDownMinHeap(vt::AbstractVector{T},i::Int64) where {T}
+    len::Int64 = length(vt)
+    l::Int64 = i << 1; r::Int64 = l + 1
+    res1::Bool = l > len || vt[i] <= vt[l]
+    res2::Bool = r > len || vt[i] <= vt[r]
+    if res1 && res2; return;
+    elseif res1; vt[i],vt[r] = vt[r],vt[i]; _bubbleDownMinHeap(vt,r)
+    elseif res2; vt[i],vt[l] = vt[l],vt[i]; _bubbleDownMinHeap(vt,l)
+    elseif vt[l] <= vt[r]; vt[i],vt[l] = vt[l],vt[i]; _bubbleDownMinHeap(vt,l)
+    else   vt[i],vt[r] = vt[r],vt[i]; _bubbleDownMinHeap(vt,r)
     end
-    valtree[i] = v
 end
 
-function _binaryHeapPop!(comp::Comp, valtree::Array{T}) where {Comp,T}
-    v = valtree[1]
-    if length(valtree) == 1
-        empty!(valtree)
-    else
-        valtree[1] = pop!(valtree)
-        if length(valtree) > 1
-            _heapBubbleDown!(comp, valtree, 1)
-        end
+function _minHeapify(vt::AbstractVector{T}) where {T}
+    len = length(vt)
+    for i in 2:len; _bubbleUpMinHeap(vt,i); end
+end
+
+mutable struct MinHeap{T}
+    valtree::Vector{T}
+    MinHeap{T}() where {T} = new{T}(Vector{T}())
+    function MinHeap{T}(xs::AbstractVector{T}) where {T}
+        valtree = copy(xs)
+        _minHeapify(valtree)
+        new{T}(valtree)
+    end
+end
+Base.length(h::MinHeap)  = length(h.valtree)
+Base.isempty(h::MinHeap) = isempty(h.valtree)
+top(h::MinHeap{T}) where {T} = h.valtree[1]
+function Base.sizehint!(h::MinHeap{T},s::Integer) where {T}
+    sizehint!(h.valtree,s); return h
+end
+
+function Base.push!(h::MinHeap{T},v::T) where {T} 
+    push!(h.valtree,v)
+    _bubbleUpMinHeap(h.valtree,length(h.valtree))
+    return h
+end
+
+function Base.pop!(h::MinHeap{T}) where {T}
+    v = h.valtree[1]
+    xx = pop!(h.valtree)
+    if length(h.valtree) >= 1
+        h.valtree[1] = xx
+        _bubbleDownMinHeap(h.valtree,1)
     end
     return v
 end
 
-function _makeBinaryHeap(comp::Comp, xs) where {Comp}
-    n = length(xs)
-    valtree = copy(xs)
-    for i = 2 : n
-        _heapBubbleUp!(comp, valtree, i)
-    end
-    return valtree
-end
-
-mutable struct BinaryHeap{T,Comp} <: AbstractHeap{T}
-    comparer::Comp
-    valtree::Vector{T}
-
-    BinaryHeap{T,Comp}() where {T,Comp} = new{T,Comp}(Comp(), Vector{T}())
-
-    function BinaryHeap{T,Comp}(xs::AbstractVector{T}) where {T,Comp}
-        valtree = _makeBinaryHeap(Comp(), xs)
-        new{T,Comp}(Comp(), valtree)
-    end
-end
-
-const BinaryMinHeap{T} = BinaryHeap{T, LessThan}
-const BinaryMaxHeap{T} = BinaryHeap{T, GreaterThan}
-
-BinaryMinHeap(xs::AbstractVector{T}) where T = BinaryMinHeap{T}(xs)
-BinaryMaxHeap(xs::AbstractVector{T}) where T = BinaryMaxHeap{T}(xs)
-
-length(h::BinaryHeap)  = length(h.valtree)
-isempty(h::BinaryHeap) = isempty(h.valtree)
-
-function push!(h::BinaryHeap, v)
-    valtree = h.valtree
-    push!(valtree, v)
-    _heapBubbleUp!(h.comparer, valtree, length(valtree))
-    return h
-end
-function sizehint!(h::BinaryHeap, s::Integer)
-    sizehint!(h.valtree, s)
-    return h
-end
-
-@inline top(h::BinaryHeap) = h.valtree[1]
-
-pop!(h::BinaryHeap{T}) where {T} = _binaryHeapPop!(h.comparer, h.valtree)
-
-##################################################################
-###  Generic functions for all heaps
-##################################################################
-
-Base.eltype(::Type{<:AbstractHeap{T}}) where T = T
-function extract_all!(h::AbstractHeap{VT}) where VT
-    n = length(h)
-    r = Vector{VT}(undef, n)
-    for i in 1 : n
-        r[i] = pop!(h)
-    end
-    return r
-end
-
-function extract_all_rev!(h::AbstractHeap{VT}) where VT
-    n = length(h)
-    r = Vector{VT}(undef, n)
-    for i in 1 : n
-        r[n + 1 - i] = pop!(h)
-    end
-    return r
-end
-
-# Array functions using heaps
-
-function nextreme(comp::Comp, n::Int, arr::AbstractVector{T}) where {T, Comp}
-    if n <= 0
-        return T[] # sort(arr)[1:n] returns [] for n <= 0
-    elseif n >= length(arr)
-        return sort(arr, lt = (x, y) -> compare(comp, y, x))
-    end
-
-    buffer = BinaryHeap{T,Comp}()
-
-    for i = 1 : n
-        @inbounds xi = arr[i]
-        push!(buffer, xi)
-    end
-
-    for i = n + 1 : length(arr)
-        @inbounds xi = arr[i]
-        if compare(comp, top(buffer), xi)
-            # This could use a pushpop method
-            pop!(buffer)
-            push!(buffer, xi)
-        end
-    end
-
-    return extract_all_rev!(buffer)
-end
-
-function nlargest(n::Int, arr::AbstractVector{T}) where T
-    return nextreme(LessThan(), n, arr)
-end
-function nsmallest(n::Int, arr::AbstractVector{T}) where T
-    return nextreme(GreaterThan(), n, arr)
-end
-
-end
 ######################################################################################################
-### End binary heaps
-### Largely copied from https://github.com/JuliaCollections/DataStructures.jl/blob/master/src/heaps/binary_heap.jl
+### BEGIN END CODE
 ######################################################################################################
-using .BinHeaps
 
-function calcIt(dist,x::Float64,y::Float64,z::Float64,vx::Float64,vy::Float64,vz::Float64)::Tuple{Float64,Float64}
+mutable struct Asteroid
+    idx::I
+    numSubnodes::I
+    subnodeIntervals::Vector{Tuple{F,F}}
+    arcs::Vector{Vector{Tuple{F,F,I}}} 
+end
+Asteroid() = Asteroid(-1,0,[],[])
+
+function calcIt(dist::F,x::F,y::F,z::F,vx::F,vy::F,vz::F)::Tuple{F,F}
     ### Quadratic is (x+vx*t)^2 + (y+vy*t)^2 + (z+vz*t)^2 == d^2
-    a = vx^2 + vy^2 + vz^2
+    a::F = vx^2 + vy^2 + vz^2
     if a < 1e-6
         return x*x+y*y+z*z <= dist*dist ? (-1e9,1e9) : (-1e0,-1e0)
     end
-    b = 2 * (x*vx+y*vy+z*vz)
-    c = x^2+y^2+z^2-dist^2
-    disc = b*b-4*a*c
+    b::F = 2 * (x*vx+y*vy+z*vz)
+    c::F = x^2+y^2+z^2-dist^2
+    disc::F = b*b-4*a*c
     if disc < 0; return (-1e0,-1e0); end
-    sqrtdisc = sqrt(disc)
-    oneover2a = 0.5/a
+    sqrtdisc::F = sqrt(disc)
+    oneover2a::F = 0.5/a
     return (oneover2a*(-b-sqrtdisc),oneover2a*(-b+sqrtdisc))
 end
 
-mutable struct Asteroid
-    idx::Int64
-    numSubnodes::Int64
-    subnodeIntervals::Array{Tuple{Float64,Float64},1}
-    arcs::Array{Array{Tuple{Float64,Float64,Int64},1},1}
-end
-
-Asteroid() = Asteroid(-1,0,Array{Tuple{Float64,Float64},1}(),Array{Array{Tuple{Float64,Float64,Int64},1},1}())
-
-
-function tryIt(dist::Float64,N::Int64,S::Int64,x0::Array{Float64,1},y0::Array{Float64,1},z0::Array{Float64,1},
-               vx::Array{Float64,1},vy::Array{Float64,1},vz::Array{Float64,1})
+function tryIt(dist::F,N::I,S::I,x0::VF,y0::VF,z0::VF,vx::VF,vy::VF,vz::VF)::Bool
     ## Step1: For each pair of planets, need to calculate the interval of time in which they are within
     ##        dist of each other.
-    arcs::Array{Array{Tuple{Float64,Float64,Int64},1},1} = [ Array{Tuple{Float64,Float64,Int64},1}() for i in 1:N ]
-    for i in 1:N-1
-        for j in i+1:N
-            op = calcIt(dist,x0[j]-x0[i],y0[j]-y0[i],z0[j]-z0[i],vx[j]-vx[i],vy[j]-vy[i],vz[j]-vz[i])
+    arcs::Vector{Vector{Tuple{F,F,I}}} = [ Vector{Tuple{F,F,I}}() for i in 1:N ]
+    for i::I in 1:N-1
+        for j::I in i+1:N
+            op::Tuple{F,F} = calcIt(dist,x0[j]-x0[i],y0[j]-y0[i],z0[j]-z0[i],vx[j]-vx[i],vy[j]-vy[i],vz[j]-vz[i])
             if op[2] <= 0; continue; end
             push!(arcs[i],(op[1],op[2],j))
             push!(arcs[j],(op[1],op[2],i))            
@@ -255,16 +116,16 @@ function tryIt(dist::Float64,N::Int64,S::Int64,x0::Array{Float64,1},y0::Array{Fl
 
     ## Step2: We need to split the nodes that are isolated with the S gaps.  This won't create edges, but
     ##        it could explode the node count to O(V^2).
-    gr::Array{Asteroid} = [Asteroid() for x in 1:N]
-    for i in 1:N
-        a = arcs[i]
+    gr::Vector{Asteroid} = [Asteroid() for x in 1:N]
+    for i::I in 1:N
+        a::Vector{Tuple{F,F,I}} = arcs[i]
         if length(a) == 0; continue; end
         sort!(a)  ## Prob worst line in here
-        ii = 1
+        ii::I = 1
         while(ii <= length(a))
-            jj = ii
-            si = max(0.0,a[ii][1])
-            ei = a[ii][2]+S
+            jj::I = ii
+            si::F = max(0.0,a[ii][1])
+            ei::F = a[ii][2]+S
             while (jj < length(a))
                 if a[jj+1][1] > ei; break; end
                 ei = max(ei,a[jj+1][2]+S)
@@ -283,7 +144,7 @@ function tryIt(dist::Float64,N::Int64,S::Int64,x0::Array{Float64,1},y0::Array{Fl
     gr[1].subnodeIntervals[1] = (0.0,gr[1].subnodeIntervals[1][2])
     
     ## Step3: Run a modified Dijkstra's to find the minimum time we arrive at each node of the graph
-    b = BinaryMinHeap{Tuple{Float64,Int64}}()
+    b = MinHeap{Tuple{F,I}}()
     push!(b,(0.0,1))
     while !isempty(b)
         (t::Float64,n::Int64) = pop!(b)
@@ -292,11 +153,6 @@ function tryIt(dist::Float64,N::Int64,S::Int64,x0::Array{Float64,1},y0::Array{Fl
         if ast.idx > 0 && ast.subnodeIntervals[ast.idx][2] >= t; continue; end
         if ast.idx < 0; gr[n].idx = 1; end
         while t > ast.subnodeIntervals[ast.idx][2]; ast.idx += 1; end
-        #println(ast.arcs)
-        #println("HERE")
-        #println("HERE2")
-        #println(ast.idx)
-        #println(ast.arcs[ast.idx])
 
         for arc in ast.arcs[ast.idx]
             if t > arc[2]; continue; end
@@ -307,38 +163,49 @@ function tryIt(dist::Float64,N::Int64,S::Int64,x0::Array{Float64,1},y0::Array{Fl
     return false
 end
 
+######################################################################################################
+### 1) We can always jump to a planet and immediately jump back, so the S constraint really just
+###    applies if we get stuck on an asteroid and can't jump.  For this case, we just split the nodes
+### 2) We do a binary search on the distance    
+######################################################################################################
+
+function solve(N::I,S::I,x0::VF,y0::VF,z0::VF,vx::VF,vy::VF,vz::VF)::F
+    lb::F,ub::F = 0.0,1000.0*sqrt(3.0)
+    while (ub-lb) > 1e-4
+        mid = 0.5*(ub+lb)
+        if tryIt(mid,N,S,x0,y0,z0,vx,vy,vz); ub = mid; else lb = mid; end
+    end
+    return 0.5*(ub+lb)
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N,S = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        x0 = fill(0.0,N) 
-        y0 = fill(0.0,N)
-        z0 = fill(0.0,N)
-        vx = fill(0.0,N)
-        vy = fill(0.0,N)
-        vz = fill(0.0,N)
+        N,S = gis()
+        x0::VF = fill(0.0,N)
+        y0::VF = fill(0.0,N)
+        z0::VF = fill(0.0,N)
+        vx::VF = fill(0.0,N)
+        vy::VF = fill(0.0,N)
+        vz::VF = fill(0.0,N)
         for i in 1:N
-            x0[i],y0[i],z0[i],vx[i],vy[i],vz[i] = [parse(Float64,x) for x in split(rstrip(readline(infile)))]; end
-        lb = 0.000
-        ub = 1000*sqrt(3)
-        while (ub-lb) > 1.8e-4 && 0.5 * (ub-lb) / (lb+1e-99) > 0.9e-4
-            mid = 0.5 * (ub+lb)
-            (lb,ub) = tryIt(mid,N,S,x0,y0,z0,vx,vy,vz) ? (lb,mid) : (mid,ub)
+            x0[i],y0[i],z0[i],vx[i],vy[i],vz[i] = gfs()
         end
-        @printf("%.6f\n",0.5*(lb+ub))
+        ans = solve(N,S,x0,y0,z0,vx,vy,vz)
+        print("$ans\n")
     end
 end
 
-function mainLoop(n,f)
-    for i in 1:n
-        main(f)
-    end
-end
-
+Random.seed!(8675309)
 main()
-#using ProfileView
-#@profview main("C.in2")
-#@profview main("C.in2")
-#Profile.print(format=:flat)
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+
+

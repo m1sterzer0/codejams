@@ -1,4 +1,18 @@
-using Printf
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
 
 ######################################################################################################
 ### Cool problem.
@@ -50,18 +64,16 @@ using Printf
 ###
 ###########################################################################################
 
-function ypp(C::Vector{Float64},x::Float64,y::Float64,yp::Float64)::Float64
-    ds2::Float64 = yp*yp+1
-    f::Float64 = 1.0
-    g::Float64 = 0.0
-    h::Float64 = 0.0
-    x2::Float64 = x * x
-    for yi in C
-        ymyi::Float64 = (y-yi)
-        ymyi2::Float64 = ymyi*ymyi
-        denom::Float64 = x2 + ymyi2
-        rdenom::Float64 = 1.0 / denom
-        rdenom2::Float64 = rdenom*rdenom
+function ypp(C::VF,x::F,y::F,yp::F)::F
+    ds2::F = yp*yp+1
+    f::F,g::F,h::F = 1.0,0.0,0.0
+    x2::F = x*x
+    for yi::F in C
+        ymyi::F = (y-yi)
+        ymyi2::F = ymyi*ymyi
+        denom::F = x2 + ymyi2
+        rdenom::F = 1.0 / denom
+        rdenom2::F = rdenom*rdenom
         f += rdenom
         g += ymyi * rdenom2
         h += x * rdenom2
@@ -76,19 +88,19 @@ end
 ## euler had some divergence, so we are using midpoint method.
 #####################################################################
 
-function diffeqSolve(C::Vector{Float64}, y0::Float64, yp0::Float64, xstart::Float64,
-                     xend::Float64, numpoints::Int64, yabsmax::Float64)
-    good = true
-    h = (xend-xstart) / (numpoints-1)
-    halfh = 0.5 * h
-    yarr = fill(0.0,numpoints)
-    xarr = fill(0.0,numpoints)
+function diffeqSolve(C::VF, y0::F, yp0::F, xstart::F,
+                     xend::F, numpoints::I, yabsmax::F)::Tuple{Bool,VF,VF}
+    good::Bool = true
+    h::F = (xend-xstart) / (numpoints-1)
+    halfh::F = 0.5 * h
+    yarr::VF = fill(0.0,numpoints)
+    xarr::VF = fill(0.0,numpoints)
     xarr[1] = xstart
     yarr[1] = y0
-    x,y,yp = xstart,y0,yp0
-    for i in 2:numpoints
-        k1,l1 = yp, ypp(C,x,y,yp)
-        k2,l2 = yp + halfh * l1, ypp(C,x+halfh,y+halfh*k1,yp+halfh*l1)
+    x::F,y::F,yp::F = xstart,y0,yp0
+    for i::I in 2:numpoints
+        k1::F,l1::F = yp, ypp(C,x,y,yp)
+        k2::F,l2::F = yp + halfh * l1, ypp(C,x+halfh,y+halfh*k1,yp+halfh*l1)
         x += h
         y += h * k2
         yp += h * l2
@@ -103,18 +115,18 @@ function diffeqSolve(C::Vector{Float64}, y0::Float64, yp0::Float64, xstart::Floa
     return good,xarr,yarr
 end
 
-function slopeSearch(m1,m2,numpoints,A,B,C)
-    xarr,yarr = [],[]
-    good1,xarr1,yarr1 = diffeqSolve(C, A, m1, -10.0, 10.0, numpoints, 50.0)
-    good2,xarr2,yarr2 = diffeqSolve(C, A, m2, -10.0, 10.0, numpoints, 50.0)
-    y1,y2 = yarr1[end],yarr2[end]
+function slopeSearch(m1::F,m2::F,numpoints::I,A::F,B::F,C::VF)
+    xarr::VF,yarr::VF = [],[]
+    good1::Bool,xarr1::VF,yarr1::VF = diffeqSolve(C, A, m1, -10.0, 10.0, numpoints, 50.0)
+    good2::Bool,xarr2::VF,yarr2::VF = diffeqSolve(C, A, m2, -10.0, 10.0, numpoints, 50.0)
+    y1::F,y2::F = yarr1[end],yarr2[end]
     ## Ensure the we are braketing the points
     #print("m1:$m1 m2:$m2 good1:$good1 good2:$good2 y1:$y1 y2:$y2 B:$B\n")
     if good1 && y1 == B; return m1,m2,xarr1,yarr1; end
     if good2 && y2 == B; return m1,m2,xarr2,yarr2; end
     if !good1 || !good2 || (y1-B) * (y2-B) >= 0; print("ERROR!\n"); exit(1); end
     for i in 1:10
-        mmid = 0.5 * (m1+m2)
+        mmid::F = 0.5 * (m1+m2)
         good,xarr,yarr = diffeqSolve(C, A, mmid, -10.0, 10.0, numpoints, 50.0)
         if yarr[end] == B; return m1,m2,xarr,yarr; end
         if (y1-B)*(yarr[end]-B) < 0; y2 = yarr[end]; m2 = mmid; 
@@ -124,58 +136,68 @@ function slopeSearch(m1,m2,numpoints,A,B,C)
     return m1,m2,xarr,yarr
 end
 
-function calcDose(xarr::Vector{Float64},yarr::Vector{Float64},C::Vector{Float64})::Float64
-    dose = 0.0
-    for i in 2:length(xarr)
-        h = xarr[i]-xarr[i-1]
-        dy = yarr[i]-yarr[i-1]
-        xmid = 0.5*(xarr[i]+xarr[i-1])
-        ymid = 0.5*(yarr[i]+yarr[i-1])
-        incdose = 1.0
+function calcDose(xarr::VF,yarr::VF,C::VF)::F
+    dose::F = 0.0
+    for i::I in 2:length(xarr)
+        h::F = xarr[i]-xarr[i-1]
+        dy::F = yarr[i]-yarr[i-1]
+        xmid::F = 0.5*(xarr[i]+xarr[i-1])
+        ymid::F = 0.5*(yarr[i]+yarr[i-1])
+        incdose::F = 1.0
         for p in C
             incdose += 1.0 / (xmid*xmid + (ymid-p)*(ymid-p))
         end
-        inctime = sqrt(h*h+dy*dy)
+        inctime::F = sqrt(h*h+dy*dy)
         dose += incdose * inctime
-        #print("xmid:$xmid ymid:$ymid dy:$dy h:$h incdose:$incdose inctime:$inctime dose:$dose\n")
     end
     return dose
 end
 
+function solve(N::I,A::F,B::F,C::VF)::F
+    npoints = 10001
+    ## First pass, do a fine search on the slopes, but with only 1001 points run
+    searchPoints::Vector{Tuple{F,F}} = []
+    lastgood::Bool,lastslope::F,lasty::F = false,-99,-99
+    for m in [-4.0 + 0.0025x for x in 0:3200]
+        good::Bool,xarr::VF,yarr::VF = diffeqSolve(C, A, m, -10.0, 10.0, npoints, 50.0)
+        if good && lastgood && (lasty-B) * (yarr[end]-B) <= 0
+            push!(searchPoints,(lastslope,m))
+        end
+        lastgood,lastslope,lasty = good,m,yarr[end]
+    end
+    best::F = 1e99
+    ## Second pass, 
+    for (m1::F,m2::F) in searchPoints
+        m1,m2,xarr,yarr = slopeSearch(m1,m2,npoints,A,B,C)
+        #print("Final m1:$m1 m2:$m2 y:{$(yarr[end])} B:{$B}\n")
+        dose::F = calcDose(xarr,yarr,C)
+        best = min(dose,best)
+    end
+    return best
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        arr = split(rstrip(readline(infile)))
-        N = parse(Int64,arr[1])
-        A = parse(Float64,arr[2])
-        B = parse(Float64,arr[3])
-        C = [parse(Float64,x) for x in split(rstrip(readline(infile)))]
-        npoints = 10001
-
-
-        ## First pass, do a fine search on the slopes, but with only 1001 points run
-        searchPoints = []
-        lastgood,lastslope,lasty = false,-99,-99
-        for m in [-4.0 + 0.0025x for x in 0:3200]
-            good,xarr,yarr = diffeqSolve(C, A, m, -10.0, 10.0, npoints, 50.0)
-            #print("$m $good $(yarr[end])\n")
-            if good && lastgood && (lasty-B) * (yarr[end]-B) <= 0
-                push!(searchPoints,(lastslope,m))
-            end
-            lastgood,lastslope,lasty = good,m,yarr[end]
-        end
-        best = 1e99
-        ## Second pass, 
-        for (m1,m2) in searchPoints
-            m1,m2,xarr,yarr = slopeSearch(m1,m2,npoints,A,B,C)
-            #print("Final m1:$m1 m2:$m2 y:{$(yarr[end])} B:{$B}\n")
-            dose = calcDose(xarr,yarr,C)
-            best = min(dose,best)
-        end
-        @printf("%.5f\n",best)
+        xx::VS = gss()
+        N = parse(Int64,xx[1])
+        A = parse(Float64,xx[2])
+        B = parse(Float64,xx[3])
+        C = gfs()
+        ans = solve(N,A,B,C)
+        print("$ans\n")
     end
 end
-        
+
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

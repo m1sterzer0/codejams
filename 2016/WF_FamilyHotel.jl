@@ -1,4 +1,18 @@
-using Printf
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
 
 ######################################################################################################
 ### Observations
@@ -27,55 +41,46 @@ using Printf
 ###    calculated in logarithmic time
 ######################################################################################################
 
-function modadd(a::Int64,b::Int64,m::Int64)
-    s = a + b
-    return s > m ? s-m : s
-end
-
-function modsub(a::Int64,b::Int64,m::Int64)
-    s = a - b
-    return s < 0 ? s + m : s
-end
-
-function modmult(a::Int64,b::Int64,m::Int64)
-    return (a*b) % m
-end
-
-### This version only works for a prime modulus
-function modinv(a::Int64,p::Int64)
-    ans::Int64, factor::Int64, e::Int64 = [1,a,p-2]
-    while (e > 0) 
-        if e & 1 ≠ 0; ans = modmult(ans,factor,p); end
-        factor = modmult(factor,factor,p)
-        e = e >> 1
-    end
-    return ans
-end
-
-function calcq(n,p)
-    q = [1,0,modinv(2,p)]
+function calcq(n::I,p::I)
+    q::VI = [1,0,invmod(2,p)]
     sizehint!(q,10000000)
-    s1,s0 = [1, modadd(1,modinv(2,p),p)]
-    for i in 4:n
-        a = modmult(modinv(i-1,p),s1,p)
+    s1::I,s0::I = 1, (1 + invmod(2,p)) % p
+    for i::I in 4:n
+        a::I = (s1 * invmod(i-1,p)) % p
         push!(q,a)
-        s1,s0 = s0,modadd(a,s0,p)
+        s1,s0 = s0, (a+s0)%p
     end
     return q
 end
 
+function solve(n::I,k::I,working)::I
+    (q::VI,) = working
+    p::I = 10^9+7
+    vacantProb = q[k] * q[n-k+1] % p
+    ans = 1 - vacantProb
+    return ans < 0 ? ans + p : ans
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
-    p = 1000000007
-    q  = calcq(10000000,p)
+    p::I = 10^9+7
+    q::VI = calcq(10000000,p)
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        n,k = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        vacantProb = modmult(q[k],q[n-k+1],p)
-        ans = modsub(1,vacantProb,p)
+        n,k = gis()
+        ans = solve(n,k,(q,))
         print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

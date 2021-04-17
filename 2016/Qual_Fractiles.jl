@@ -1,8 +1,20 @@
-using Printf
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
 
 ######################################################################################################
-### BEGIN MAIN PROGRAM
-###
 ### Observations
 ###    * Lets consider the 'L' blocks as "False", and the "G" blocks as "True"
 ###    * Looking at the 2, 3, cases gives us some intuition
@@ -30,24 +42,28 @@ using Printf
 ###      -- we have to deal with "1-indexing", so we cannot forget to add 1
 ######################################################################################################
 
+function solve(K::I,C::I,S::I)::String
+    if S*C<K; return "IMPOSSIBLE"; end
+    pvs::VI = [K^i for i in 0:C-1]
+    totalnumbers::I = (K + (C-1)) ÷ C
+    digits::VI = vcat(collect(0:K-1),zeros(Int64,totalnumbers*C - K))
+    digits2::Array{I,2} = reshape(digits,C,totalnumbers)
+    indices::VI = [c' * pvs + 1 for c in eachcol(digits2)]
+    return join(indices," ")
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        K,C,S = [parse(Int64,x) for x in split(readline(infile))]
-        if S * C < K
-            print("IMPOSSIBLE\n")
-        else 
-            pvs = [K^i for i in 0:C-1]
-            totalnumbers = (K + (C-1)) ÷ C
-            digits = vcat(collect(0:K-1),zeros(Int64,totalnumbers*C - K))
-            digits = reshape(digits,C,totalnumbers)
-            indices = [c' * pvs + 1 for c in eachcol(digits)]
-            outstr = join(indices," ")
-            print("$outstr\n")
-        end
+        K,C,S = gis()
+        ans = solve(K,C,S)
+        print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+

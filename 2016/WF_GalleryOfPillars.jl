@@ -1,4 +1,18 @@
-using Printf
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
 
 ######################################################################################################
 ### 1) In order for a pillar not to be blocked, it needs to be on a pair of relatively prime
@@ -22,41 +36,41 @@ using Printf
 ###    https://artofproblemsolving.com/wiki/index.php/Mobius_function
 ######################################################################################################
 
-function mobiusSieve(n::Int64)
-    mu = fill(Int8(1),n)
-    isPrime = fill(true,n)
+function mobiusSieve(n::I)::Vector{Int8}
+    mu::Vector{Int8} = fill(Int8(1),n)
+    isPrime::Vector{Bool} = fill(true,n)
 
     ### Do the evens
     isPrime[4:2:n] .= false
-    for i in 2:2:n; mu[i] = -mu[i]; end
-    for i in 4:4:n; mu[i] = 0; end
+    for i::I in 2:2:n; mu[i] = -mu[i]; end
+    for i::I in 4:4:n; mu[i] = 0; end
 
-    for i in 3:2:n
+    for i::I in 3:2:n
         if !isPrime[i]; continue; end
-        for j in i*i:2*i:n; isPrime[j] = false; end
-        for j in i:i:n;     mu[j] = -mu[j];     end
-        for j in i*i:i*i:n; mu[j] = 0;          end
+        for j::I in i*i:2*i:n; isPrime[j] = false; end
+        for j::I in i:i:n;     mu[j] = -mu[j];     end
+        for j::I in i*i:i*i:n; mu[j] = 0;          end
     end
 
     return mu
 end
 
-function intSqrt(k::Int64)
+function intSqrt(k::I)::I
     if k == 0; return 0; end
     if k == 1; return 1; end
-    lb::Int64,ub::Int64 = 1,1000001
+    lb::I,ub::I = 1,1000001
     while ub-lb > 1
-        mid = (lb+ub) ÷ 2
+        mid::I = (lb+ub) ÷ 2
         (lb,ub) = mid*mid <= k ? (mid,ub) : (lb,mid)
     end
     return lb
 end
 
-function countPoints(sqlim::Int64,rsq::Int64)
-    res = 0
-    ymax = sqlim
-    for x in 0:sqlim 
-        ylim2 = rsq - x*x
+function countPoints(sqlim::I,rsq::I)::I
+    res::I = 0
+    ymax::I = sqlim
+    for x::I in 0:sqlim 
+        ylim2::I = rsq - x*x
         if ylim2 < 0; break; end
         while ymax*ymax > ylim2; ymax -=1; end
         res += (ymax+1)
@@ -64,24 +78,40 @@ function countPoints(sqlim::Int64,rsq::Int64)
     return res-1 ## skip (0,0)
 end
 
+function solve(N::I,R::I,working)::I
+    (mu::Vector{Int8},) = working
+    M = 1000000
+    maxd2::I = (M*M-1) ÷ (R*R)
+    maxd::I = min(intSqrt(maxd2),N-1)
+    ans::I = 0
+    for d in 1:maxd
+        if mu[d] != 0
+            ans += countPoints(maxd ÷ d, maxd2 ÷ (d*d)) * mu[d]
+        end
+    end
+    return ans
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
-    mu = mobiusSieve(1000000)
+    mu = mobiusSieve(10^6)
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        M = 1000000
-        N,R = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        maxd2 = (M*M-1) ÷ (R*R)
-        maxd = min(intSqrt(maxd2),N-1)
-        ans = 0
-        for d in 1:maxd
-            if mu[d] != 0
-                ans += countPoints(maxd ÷ d, maxd2 ÷ (d*d)) * mu[d]
-            end
-        end
+        N,R = gis()
+        ans = solve(N,R,(mu,))
         print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

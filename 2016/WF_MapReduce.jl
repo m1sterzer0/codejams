@@ -1,29 +1,25 @@
-using Printf
 
-######################################################################################################
-### 1) As long as we don't create "shortcuts" through the graph and instead just vaguely "erode away"
-###    corners/stubs, the most a block removal will do is to shorten the best path by 2 (it could also
-###    leave the shortest path untouched).
-###
-### 2) This leads to the following algorithm proposal
-###    * Run Bfs to get the current shortest path length (and check IMPOSSIBLE)
-###    * Order all of the walls in a legal removal order (more details below)
-###    * Run a binary search on the removal order to find one with the right path length
-###
-### 3) In ordering the walls, we make 2 observations
-###    --- We can always remove a wall with 3-4 exposed sides
-###    --- We can "most" of the time remove a corner (2 adjacent exposed sides), but we have to
-###        check the diagonal rule.  If we fail the diagonal check, we save it for later.
-###    To do this, we maintain 2 queues -- one for the blocks with 3 exposed sides, and then one 
-###    for the corners.  For each step, we prioritize the 3 exposed sides. 
-######################################################################################################
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
 
-function findStartFinish(board::Array{Char,2})
-    (R,C) = size(board)
-    sqS = (-1,-1)
-    sqF = (-1,-1)
-    for i in 1:R
-        for j in 1:C
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+function findStartFinish(board::Array{Char,2})::Tuple{PI,PI}
+    (R::I,C::I) = size(board)
+    sqS::PI = (-1,-1)
+    sqF::PI = (-1,-1)
+    for i::I in 1:R
+        for j::I in 1:C
             if     board[i,j] == 'S'; sqS = (i,j)
             elseif board[i,j] == 'F'; sqF = (i,j)
             end
@@ -32,31 +28,29 @@ function findStartFinish(board::Array{Char,2})
     return (sqS,sqF)
 end
 
-function printBoard(board::Array{Char,2})
-    (R,C) = size(board)
-    for i in 1:R
-        ss = join(board[i,:],"")
-        print("$ss\n")
-    end
+function stringifyBoard(board::Array{Char,2})::VS
+    ans::VS = []
+    (R::I,C::I) = size(board)
+    for i in 1:R; push!(ans,join(board[i,:],"")); end
+    return ans
 end
 
-function constructBoard(board::Array{Char,2}, wallOrder::AbstractVector{Tuple{Int64,Int64}})
+function constructBoard(board::Array{Char,2}, wallOrder::Vector{PI})::Array{Char,2}
     bb = copy(board)
     for (i,j) in wallOrder; bb[i,j] = '.'; end
     return bb
 end
 
-function doBfs(board::Array{Char,2},sqS::Tuple{Int64,Int64},sqF::Tuple{Int64,Int64},copyFlag::Bool)::Int64
-    bb = copyFlag ? copy(board) : board
+function doBfs(board::Array{Char,2},sqS::PI,sqF::PI,copyFlag::Bool)::I
+    bb::Array{Char,2} = copyFlag ? copy(board) : board
     bb[sqS[1],sqS[2]] = 'X'
     bb[sqF[1],sqF[2]] = '.'
-    (R,C) = size(bb)
-    qq = Vector{Tuple{Int64,Int64,Int64}}()
+    (R::I,C::I) = size(bb)
+    qq::Vector{TI} = []
     push!(qq,(0,sqS[1],sqS[2]))
     while !isempty(qq)
-        (d,i,j) = popfirst!(qq)
+        (d::I,i::I,j::I) = popfirst!(qq)
         if (i,j) == sqF; return d; end
-        #println("DEBUG: d:$d i:$i j:$j")
         ## Don't have to do bounds checking because border is guaranteed
         for c in [(i-1,j),(i+1,j),(i,j-1),(i,j+1)]
             if bb[c[1],c[2]] == '.'
@@ -68,13 +62,14 @@ function doBfs(board::Array{Char,2},sqS::Tuple{Int64,Int64},sqF::Tuple{Int64,Int
     return -1
 end
 
-function processRemoval(borderCount::Array{Int8,2},board::Array{Char,2},i::Int64,j::Int64,ready::Vector{Tuple{Int64,Int64}}, corner::Vector{Tuple{Int64,Int64}})
+function processRemoval(borderCount::Array{Int8,2},board::Array{Char,2},
+                        i::I,j::I,ready::Vector{PI}, corner::Vector{PI})
     borderCount[i,j] = -1
     board[i,j] = '.'
     for (ci,cj) in [(i,j-1),(i,j+1),(i-1,j),(i+1,j)] 
         if borderCount[ci,cj] > 0
             borderCount[ci,cj] -= 1
-            edges = borderCount[ci,cj]
+            edges::Int8 = borderCount[ci,cj]
             if edges >= 3;                                         continue
             elseif edges <= 1;                                     push!(ready,(ci,cj))
             elseif board[ci-1,cj] == '#' && board[ci+1,cj] == '#'; continue
@@ -85,7 +80,7 @@ function processRemoval(borderCount::Array{Int8,2},board::Array{Char,2},i::Int64
     end
 end
 
-function checkCorner(board::Array{Char,2},i::Int64,j::Int64)
+function checkCorner(board::Array{Char,2},i::I,j::I)
     for (c1,c2,c3,c4,c5,c6) in [(i+1,j,i,j+1,i+1,j+1),
                                 (i+1,j,i,j-1,i+1,j-1),
                                 (i-1,j,i,j+1,i-1,j+1),
@@ -97,14 +92,12 @@ function checkCorner(board::Array{Char,2},i::Int64,j::Int64)
     return true
 end
 function orderWalls(board::Array{Char,2})
-    bb = copy(board)
-    R,C = size(board)
-    borderCount = fill(Int8(-1),R,C)
-    ready  = Vector{Tuple{Int64,Int64}}()
-    corner = Vector{Tuple{Int64,Int64}}()
-    res = Vector{Tuple{Int64,Int64}}()
-    for i in 2:R-1
-        for j in 2:C-1
+    bb::Array{Char,2} = copy(board)
+    R::I,C::I = size(board)
+    borderCount::Array{Int8,2} = fill(Int8(-1),R,C)
+    ready::VPI = []; corner::VPI = []; res::VPI = []
+    for i::I in 2:R-1
+        for j::I in 2:C-1
             if board[i,j] != '#'; continue; end
             edges::Int8 = ( (board[i-1,j] == '#' ? 1 : 0) +
                             (board[i+1,j] == '#' ? 1 : 0) +
@@ -145,45 +138,49 @@ function orderWalls(board::Array{Char,2})
     return res
 end
 
-function main(infn="")
-    infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
-    for qq in 1:tt
-        print("Case #$qq: ")
-        R,C,D = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        board = fill('.',R,C)
-        for i in 1:R; board[i,:] = [x for x in rstrip(readline(infile))]; end
-        (sqS,sqF) = findStartFinish(board)
-        curDist = doBfs(board,sqS,sqF,true)
-        bestPossible = abs(sqS[1]-sqF[1]) + abs(sqS[2]-sqF[2]) 
-        ## Couple of special cases
-        if D == curDist
-            print("POSSIBLE\n")
-            printBoard(board)
-        elseif curDist < D || bestPossible > D
-            print("IMPOSSIBLE\n")
-        elseif (curDist - D) % 2 != 0  ## Wrong parity
-            print("IMPOSSIBLE\n")
-        else
-            wallOrder = orderWalls(board)
-            lb,ub = 0,length(wallOrder)
-            done = false
-            while (!done && ub-lb > 1)
-                mid = (ub+lb) ÷ 2
-                bb = constructBoard(board,wallOrder[1:mid])
-                d = doBfs(bb,sqS,sqF,false)
-                if d == D
-                    print("POSSIBLE\n")
-                    bb = constructBoard(board,wallOrder[1:mid])
-                    printBoard(bb)
-                    done = true
-                else
-                    (lb,ub) = d < D ? (lb,mid) : (mid,ub)
-                end
-            end
-            if !done; print("ERROR\n"); end
+function solve(R::I,C::I,D::I,board::Array{Char,2})::VS
+    (sqS,sqF) = findStartFinish(board)
+    curDist = doBfs(board,sqS,sqF,true)
+    bestPossible = abs(sqS[1]-sqF[1]) + abs(sqS[2]-sqF[2]) 
+    ## Couple of special cases
+    if D == curDist; return vcat(["POSSIBLE"],stringifyBoard(board)); end
+    if curDist < D || bestPossible > D; return ["IMPOSSIBLE"]; end
+    if (curDist - D) % 2 != 0; return ["IMPOSSIBLE"]; end  ## Wrong Parity
+    wallOrder = orderWalls(board)
+    lb,ub = 0,length(wallOrder)
+    done = false
+    while (!done && ub-lb > 1)
+        mid = (ub+lb) ÷ 2
+        bb = constructBoard(board,wallOrder[1:mid])
+        d = doBfs(bb,sqS,sqF,false)
+        if d == D
+            bb = constructBoard(board,wallOrder[1:mid])
+            return vcat(["POSSIBLE"],stringifyBoard(bb))
         end
+        (lb,ub) = d < D ? (lb,mid) : (mid,ub)
     end
 end
-        
+
+function main(infn="")
+    global infile
+    infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
+    tt::I = gi()
+    for qq in 1:tt
+        print("Case #$qq: ")
+        R,C,D = gis()
+        board::Array{Char,2} = fill('.',R,C)
+        for i in 1:R; board[i,:] = [x for x in gs()]; end
+        ans = solve(R,C,D,board)
+        for s in ans; print("$s\n"); end
+    end
+end
+
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+
