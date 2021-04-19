@@ -1,20 +1,25 @@
-using Printf
 
-######################################################################################################
-### We generate all of the googlements up front with digit sum <= than the length of the googlement.
-### We can use stars and bars for this.  We can calculate the number of ancestors of these using
-### simple combinatorics.
-######################################################################################################
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
 
 ######################################################################################################
 ### BEGIN COMBINATIONS ITERATOR
 ### From: https://github.com/JuliaMath/Combinatorics.jl/blob/master/src/combinations.jl
 ######################################################################################################
 
-struct Combinations
-    n::Int
-    t::Int
-end
+struct Combinations; n::I; t::I; end
 
 function Base.iterate(c::Combinations, s = [min(c.t - 1, i) for i in 1:c.t])
     if c.t == 0 # special case to generate 1 result for t==0
@@ -59,90 +64,94 @@ function ballsUrns(n::Integer,m::Integer)
     (convert(c,n,m) for c in combinations(vars,m-1))
 end
 
-function googlementsa(n::Integer)
-    ans = []
-    for i in 1:n
-        append!(ans,collect(ballsUrns(i,n)))
-    end
+function googlementsa(n::I)::VVI
+    ans::VVI = []
+    for i in 1:n; append!(ans,collect(ballsUrns(i,n))); end
     return ans
 end
 
-function decay(a,n)
-    ans = zeros(Int64,n)
-    for x in a
-        if x > 0; ans[x] += 1; end
-    end
+function decay(a::VI,n::I)::String
+    ans::VI = fill(0,n)
+    for x in a; if x > 0; ans[x] += 1; end; end
     return join(ans,"")
 end
 
 function doGooglements(n::Integer)
     googlements = googlementsa(n)
-    ans = Dict()
-    depCnt = Dict()
-    decayDict = Dict()
-    ancestorNumerator = factorial(n)
+    ans::Dict{String,I} = Dict{String,I}()
+    depCnt::Dict{String,I} = Dict{String,I}()
+    decayDict::Dict{String,String} = Dict{String,String}()
+    ancestorNumerator::I = factorial(n)
 
     ## Init the data structures
-    for a in googlements
-        x = join(a,"")
-        ans[x] = 1
-        depCnt[x] = 0
+    for a::VI in googlements
+        x = join(a,""); ans[x] = 1; depCnt[x] = 0
     end
 
     ## Decay all of the elements
-    for a in googlements
-        x = join(a,"")
-        y = decay(a,n)
-        decayDict[x] = y
-        depCnt[y] += 1
+    for a::VI in googlements
+        x = join(a,""); y = decay(a,n); decayDict[x] = y; depCnt[y] += 1
     end
 
     ## Add the ancestors for the nodes with ancestorDigsum > n
     digplace = collect(1:n)'
-    for a in googlements
-        ancestorDigsum = digplace * a
+    for a::VI in googlements
+        ancestorDigsum::I = digplace * a
         if ancestorDigsum > n
-            xx = join(a,"")
-            ancestors = ancestorNumerator
-            for x in a; ancestors ÷= factorial(x); end
+            xx::String = join(a,"")
+            ancestors::I = ancestorNumerator
+            for x::I in a; ancestors ÷= factorial(x); end
             ancestors ÷= factorial(n-sum(a))  ## Have to account for the zereos
             ans[xx] += ancestors
         end
     end
 
     ## Propagate the ancestor counts along the graph
-    free = [x for (x,v) in depCnt if v == 0]
+    free::VS = [x for (x,v) in depCnt if v == 0]
     while !isempty(free)
-        x = pop!(free)
-        y = decayDict[x]
+        x::String = pop!(free)
+        y::String = decayDict[x]
         ans[y] += ans[x]
         depCnt[y] -= 1
         if depCnt[y] == 0; push!(free,y); end
     end
-
     return ans
 end
 
 function precalc()
-    ans = Dict()
+    ans::Dict{String,I} = Dict{String,I}()
     for i in 1:9
-        xx = doGooglements(i)
+        xx::Dict{String,I} = doGooglements(i)
         merge!(ans,xx)
     end
     return ans
 end
 
+
+function solve(G::String,working)
+    (g::Dict{String,I},) = working
+    return haskey(g,G) ? g[G] : 1
+end
+
 function main(infn="")
-    g = precalc()
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    g = precalc()
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        G = rstrip(readline(infile))
-        ans = 1
-        if haskey(g,G); ans = g[G]; end
+        G = gs()
+        ans = solve(G,(g,))
         print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

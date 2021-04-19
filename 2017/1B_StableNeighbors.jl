@@ -1,4 +1,18 @@
-using Printf
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
 
 ######################################################################################################
 ### First, consider the case of just primary colors
@@ -24,55 +38,67 @@ using Printf
 ### d) There is a corner case! If we only have B's and O's, and we have the same number, we can still make the circle.
 ######################################################################################################
 
+function solve(N::I,R::I,O::I,Y::I,G::I,B::I,V::I)::String
+    ## Check for the hybrid corner cases
+    if B + O == N && B == O; s = "OB"^(N ÷ 2); return s; end 
+    if R + G == N && R == G; s = "GR"^(N ÷ 2); return s; end
+    if Y + V == N && Y == V; s = "VY"^(N ÷ 2); return s; end
+
+    ## Check to see if we have too many hybrids
+    if O > 0 && B <= O; return "IMPOSSIBLE"; end
+    if G > 0 && R <= G; return "IMPOSSIBLE"; end
+    if V > 0 && Y <= V; return "IMPOSSIBLE"; end
+
+    ## Subtract off the hybrids
+    r = R-G; y = Y-V; b = B-O
+    
+    ## Check for a majority
+    if r > b + y || b > r + y || y > b + r; return "IMPOSSIBLE"; end
+
+    ## Solve the primary case
+    solve(x,y,z) = (y+z-x,x-z,x-y)
+    if (r >= b && r >= y)
+        (pairs,sing1,sing2) = solve(r,y,b)
+        arr1 = ["R" for i in 1:r]
+        arr2 = vcat(fill("YB",pairs),fill("Y",sing1),fill("B",sing2))
+    elseif (y >= r && y >= b)
+        (pairs,sing1,sing2) = solve(y,b,r)
+        arr1 = ["Y" for i in 1:y]
+        arr2 = vcat(fill("BR",pairs),fill("B",sing1),fill("R",sing2))
+    elseif (b >= r && b >= y)
+        (pairs,sing1,sing2) = solve(b,r,y)
+        arr1 = ["B" for i in 1:b]
+        arr2 = vcat(fill("RY",pairs),fill("R",sing1),fill("Y",sing2))
+    end
+
+    ## Interleve the two strings
+    ans = reduce(*,[x*y for (x,y) in zip(arr1,arr2)])
+
+    ## Now we substitute our hybrid sequences in
+    ans = replace(ans,"B" => "BO"^O*"B", count=1)
+    ans = replace(ans,"R" => "RG"^G*"R", count=1)
+    ans = replace(ans,"Y" => "YV"^V*"Y", count=1)
+    return ans
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N,R,O,Y,G,B,V = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-
-        ## Check for the hybrid corner cases
-        if B + O == N && B == O; s = "OB"^(N ÷ 2); print("$s\n"); continue; end;
-        if R + G == N && R == G; s = "GR"^(N ÷ 2); print("$s\n"); continue; end;
-        if Y + V == N && Y == V; s = "VY"^(N ÷ 2); print("$s\n"); continue; end;
-
-        ## Check to see if we have too many hybrids
-        if O > 0 && B <= O; print("IMPOSSIBLE\n"); continue; end
-        if G > 0 && R <= G; print("IMPOSSIBLE\n"); continue; end
-        if V > 0 && Y <= V; print("IMPOSSIBLE\n"); continue; end
-
-        ## Subtract off the hybrids
-        r = R-G; y = Y-V; b = B-O
-        
-        ## Check for a majority
-        if r > b + y || b > r + y || y > b + r; print("IMPOSSIBLE\n"); continue; end
-
-        ## Solve the primary case
-        solve(x,y,z) = (y+z-x,x-z,x-y)
-        if (r >= b && r >= y)
-            (pairs,sing1,sing2) = solve(r,y,b)
-            arr1 = ["R" for i in 1:r]
-            arr2 = vcat(fill("YB",pairs),fill("Y",sing1),fill("B",sing2))
-        elseif (y >= r && y >= b)
-            (pairs,sing1,sing2) = solve(y,b,r)
-            arr1 = ["Y" for i in 1:y]
-            arr2 = vcat(fill("BR",pairs),fill("B",sing1),fill("R",sing2))
-        elseif (b >= r && b >= y)
-            (pairs,sing1,sing2) = solve(b,r,y)
-            arr1 = ["B" for i in 1:b]
-            arr2 = vcat(fill("RY",pairs),fill("R",sing1),fill("Y",sing2))
-        end
-
-        ## Interleve the two strings
-        ans = reduce(*,[x*y for (x,y) in zip(arr1,arr2)])
-
-        ## Now we substitute our hybrid sequences in
-        ans = replace(ans,"B" => "BO"^O*"B", count=1)
-        ans = replace(ans,"R" => "RG"^G*"R", count=1)
-        ans = replace(ans,"Y" => "YV"^V*"Y", count=1)
-
+        N,R,O,Y,G,B,V = gis()
+        ans = solve(N,R,O,Y,G,B,V)
         print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

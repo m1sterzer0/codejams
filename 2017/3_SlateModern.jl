@@ -1,4 +1,108 @@
-using Printf
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+######################################################################################################
+### BEGIN MINHEAP CODE
+######################################################################################################
+
+function _bubbleUpMinHeap(vt::AbstractVector{T},i::Int64) where {T}
+    if i == 1; return; end
+    j::Int64 = i >> 1
+    if vt[j] > vt[i]; vt[i],vt[j] = vt[j],vt[i]; _bubbleUpMinHeap(vt,j); end
+end
+
+function _bubbleDownMinHeap(vt::AbstractVector{T},i::Int64) where {T}
+    len::Int64 = length(vt)
+    l::Int64 = i << 1; r::Int64 = l + 1
+    res1::Bool = l > len || vt[i] <= vt[l]
+    res2::Bool = r > len || vt[i] <= vt[r]
+    if res1 && res2; return;
+    elseif res1; vt[i],vt[r] = vt[r],vt[i]; _bubbleDownMinHeap(vt,r)
+    elseif res2; vt[i],vt[l] = vt[l],vt[i]; _bubbleDownMinHeap(vt,l)
+    elseif vt[l] <= vt[r]; vt[i],vt[l] = vt[l],vt[i]; _bubbleDownMinHeap(vt,l)
+    else   vt[i],vt[r] = vt[r],vt[i]; _bubbleDownMinHeap(vt,r)
+    end
+end
+
+function _minHeapify(vt::AbstractVector{T}) where {T}
+    len = length(vt)
+    for i in 2:len; _bubbleUpMinHeap(vt,i); end
+end
+
+mutable struct MinHeap{T}
+    valtree::Vector{T}
+    MinHeap{T}() where {T} = new{T}(Vector{T}())
+    function MinHeap{T}(xs::AbstractVector{T}) where {T}
+        valtree = copy(xs)
+        _minHeapify(valtree)
+        new{T}(valtree)
+    end
+end
+Base.length(h::MinHeap)  = length(h.valtree)
+Base.isempty(h::MinHeap) = isempty(h.valtree)
+top(h::MinHeap{T}) where {T} = h.valtree[1]
+function Base.sizehint!(h::MinHeap{T},s::Integer) where {T}
+    sizehint!(h.valtree,s); return h
+end
+
+function Base.push!(h::MinHeap{T},v::T) where {T} 
+    push!(h.valtree,v)
+    _bubbleUpMinHeap(h.valtree,length(h.valtree))
+    return h
+end
+
+function Base.pop!(h::MinHeap{T}) where {T}
+    v = h.valtree[1]
+    xx = pop!(h.valtree)
+    if length(h.valtree) >= 1
+        h.valtree[1] = xx
+        _bubbleDownMinHeap(h.valtree,1)
+    end
+    return v
+end
+
+######################################################################################################
+### BEGIN END CODE
+######################################################################################################
+
+function solveSmall(R::I,C::I,N::I,D::I,RR::VI,CC::VI,BB::VI)::String
+    for i in 1:N-1
+        for j in i+1:N
+            if abs(BB[i]-BB[j]) > D * (abs(RR[i]-RR[j]) + abs(CC[i]-CC[j]))
+                return "IMPOSSIBLE"
+            end
+        end
+    end
+    myinf = 10^18
+    d::Array{I,2} = fill(myinf,R,C)
+    mh = MinHeap{TI}()
+    for i in 1:N;
+        push!(mh,(BB[i],RR[i],CC[i]))
+    end
+    while !isempty(mh)
+        (v,i,j) = pop!(mh)
+        if d[i,j] < myinf; continue; end
+        d[i,j] = v
+        if i > 1; push!(mh,(v+D,i-1,j)); end
+        if j > 1; push!(mh,(v+D,i,j-1)); end
+        if i < R; push!(mh,(v+D,i+1,j)); end
+        if j < C; push!(mh,(v+D,i,j+1)); end
+    end
+    return string(sum(d) % 1_000_000_007)
+end
 
 ######################################################################################################
 ### a) One key observation is that every square x is limited by min(B(vi) + D(vi,x)) where D is the
@@ -77,224 +181,50 @@ using Printf
 ###    
 ######################################################################################################
 
-
-######################################################################################################
-### BEGIN MINHEAP CODE
-######################################################################################################
-
-function _bubbleUpMinHeap(vt::AbstractVector{T},i::Int64) where {T}
-    if i == 1; return; end
-    j::Int64 = i >> 1
-    if vt[j] > vt[i]; vt[i],vt[j] = vt[j],vt[i]; _bubbleUpMinHeap(vt,j); end
-end
-
-function _bubbleDownMinHeap(vt::AbstractVector{T},i::Int64) where {T}
-    len::Int64 = length(vt)
-    l::Int64 = i << 1; r::Int64 = l + 1
-    res1::Bool = l > len || vt[i] <= vt[l]
-    res2::Bool = r > len || vt[i] <= vt[r]
-    if res1 && res2; return;
-    elseif res1; vt[i],vt[r] = vt[r],vt[i]; _bubbleDownMinHeap(vt,r)
-    elseif res2; vt[i],vt[l] = vt[l],vt[i]; _bubbleDownMinHeap(vt,l)
-    elseif vt[l] <= vt[r]; vt[i],vt[l] = vt[l],vt[i]; _bubbleDownMinHeap(vt,l)
-    else   vt[i],vt[r] = vt[r],vt[i]; _bubbleDownMinHeap(vt,r)
-    end
-end
-
-function _minHeapify(vt::AbstractVector{T}) where {T}
-    len = length(vt)
-    for i in 2:len; _bubbleUpMinHeap(vt,i); end
-end
-
-mutable struct MinHeap{T}
-    valtree::Vector{T}
-    MinHeap{T}() where {T} = new{T}(Vector{T}())
-    function MinHeap{T}(xs::AbstractVector{T}) where {T}
-        valtree = copy(xs)
-        _minHeapify(valtree)
-        new{T}(valtree)
-    end
-end
-Base.length(h::MinHeap)  = length(h.valtree)
-Base.isempty(h::MinHeap) = isempty(h.valtree)
-top(h::MinHeap{T}) where {T} = h.valtree[1]
-function Base.sizehint!(h::MinHeap{T},s::Integer) where {T}
-    sizehint!(h.valtree,s); return h
-end
-
-function Base.push!(h::MinHeap{T},v::T) where {T} 
-    push!(h.valtree,v)
-    _bubbleUpMinHeap(h.valtree,length(h.valtree))
-    return h
-end
-
-function Base.pop!(h::MinHeap{T}) where {T}
-    v = h.valtree[1]
-    xx = pop!(h.valtree)
-    if length(h.valtree) >= 1
-        h.valtree[1] = xx
-        _bubbleDownMinHeap(h.valtree,1)
-    end
-    return v
-end
-
-######################################################################################################
-### END MINHEAP CODE
-######################################################################################################
-            
-function main(infn="")
-    infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
-    for qq in 1:tt
-        print("Case #$qq: ")
-        R,C,N,D = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        RR = fill(zero(Int64),N)
-        CC = fill(zero(Int64),N)
-        BB = fill(zero(Int64),N)
-        for i in 1:N
-            RR[i],CC[i],BB[i] = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        end
-
-        ## First, we get the indices of the rows and columns
-        RRIs = unique(sort(vcat([1,R],RR)))
-        CCIs = unique(sort(vcat([1,C],CC)))
-        lr = length(RRIs)
-        lc = length(CCIs)
-        superR2idx = Dict()
-        superC2idx = Dict()
-        for (i,r) in enumerate(RRIs); superR2idx[r] = i; end
-        for (i,c) in enumerate(CCIs); superC2idx[c] = i; end
-        
-        ## Use Dijkstra to calculate the values of the super coordinates
-        ansarr = fill(-1,lr,lc)
-        mh = MinHeap{Tuple{Int64,Int64,Int64}}()
-        for i in 1:N
-            r = superR2idx[RR[i]]
-            c = superC2idx[CC[i]]
-            push!(mh,(BB[i],r,c))                
-        end
-        while !isempty(mh)
-            (d,i,j) = pop!(mh)
-            if ansarr[i,j] >= 0; continue; end
-            ansarr[i,j] = d
-            if i > 1;  push!(mh,(d+D*(RRIs[i]-RRIs[i-1]),i-1,j)); end
-            if i < lr; push!(mh,(d+D*(RRIs[i+1]-RRIs[i]),i+1,j)); end
-            if j > 1;  push!(mh,(d+D*(CCIs[j]-CCIs[j-1]),i,j-1)); end
-            if j < lc; push!(mh,(d+D*(CCIs[j+1]-CCIs[j]),i,j+1)); end
-        end
-
-        ## Do the check for impossible conditions
-        good = true
-        for idx in 1:N
-            i,j = superR2idx[RR[idx]],superC2idx[CC[idx]]
-            if ansarr[i,j] != BB[idx]; good = false; break; end
-        end
-        if !good; print("IMPOSSIBLE\n"); continue; end
-
-
-        #### Checking code
-        ##ansarr2 = fill(-1,R,C)
-        ##mh2 = MinHeap{Tuple{Int64,Int64,Int64}}()
-        ##for i in 1:N; push!(mh2,(BB[i],RR[i],CC[i])); end
-        ##while !isempty(mh2)
-        ##    (d,i,j) = pop!(mh2)
-        ##    if ansarr2[i,j] >= 0; continue; end
-        ##    ansarr2[i,j] = d
-        ##    if i > 1; push!(mh2,(d+D,i-1,j)); end
-        ##    if i < R; push!(mh2,(d+D,i+1,j)); end
-        ##    if j > 1; push!(mh2,(d+D,i,j-1)); end
-        ##    if j < C; push!(mh2,(d+D,i,j+1)); end
-        ##end
-
-        ans::Int128 = zero(Int128)
-
-        if lr == 1
-            ans = solve1DCase(CCIs,ansarr[1,:],D)
-        elseif lc == 1
-            ans = solve1DCase(RRIs,ansarr[:,1],D)
-        else
-            for i in 1:lr-1
-                for j in 1:lc-1
-                    x = solveQuad(RRIs[i+1]-RRIs[i]+1,CCIs[j+1]-CCIs[j]+1,ansarr[i,j],ansarr[i,j+1],ansarr[i+1,j],ansarr[i+1,j+1],D)
-                    ##y = sum(ansarr2[RRIs[i]:RRIs[i+1],CCIs[j]:CCIs[j+1]])
-                    ##if x != y
-                    ##    println("ERROR in quad sum: i:$i j:$j RRIs[i]:$(RRIs[i]) CCIs[j]:$(CCIs[j]) R:$(RRIs[i+1]-RRIs[i]+1) C:$(CCIs[j+1]-CCIs[j]+1) nw:$(ansarr[i,j]) ne:$(ansarr[i,j+1]) sw:$(ansarr[i+1,j]) se:$(ansarr[i+1,j+1]) D:$D x:$x y:$y")
-                    ##end
-                    ans += x
-                end
-            end
-
-            for i in 1:lr-1
-                for j in 2:lc-1
-                    ans -= solveLine(RRIs[i+1]-RRIs[i]+1,ansarr[i,j],ansarr[i+1,j],D)
-                end
-            end
-
-            for i in 2:lr-1
-                for j in 1:lc-1
-                    ans -= solveLine(CCIs[j+1]-CCIs[j]+1,ansarr[i,j],ansarr[i,j+1],D)
-                end
-            end
-
-            for i in 2:lr-1
-                for j in 2:lc-1
-                    ans += ansarr[i,j]
-                end
-            end
-        end
-        ans = ans % 1_000_000_007
-        print("$ans\n")
-    end
-end
-
-function findLineIdx(C::Int64,e1::Int64,e2::Int64,D)::Int64
+function findLineIdx(C::I,e1::I,e2::I,D::I)::I
     return min(C-1,1 + (D * (C-1) + e2 - e1) ÷ (2D))
 end
 
-function solveLine(C::Int64,e1::Int64,e2::Int64,D::Int64)::Int128
-    ## ans = e1 * (lb) + D * (lb-1) * (lb) ÷ 2 + e2 * (C-lb) + D * (C-lb-1) * (C-lb) % 2
+function solveLine(C::I,e1::I,e2::I,D::I)::Int128
     lb = findLineIdx(C,e1,e2,D)
     res =  Int128(e1) * Int128(lb) + Int128(e2) * Int128(C-lb) + Int128(D) * (Int128( (lb-1) * lb ÷ 2) + Int128( (C-lb-1) * (C-lb) ÷ 2))
     return res
 end 
 
-function solve1DCase(CCIs::Vector{Int64},BBIs::Vector{Int64},D::Int64)::Int128
-    ans = zero(Int128)
-    for i in 1:length(CCIs)-1
+function solve1DCase(CCIs::VI,BBIs::VI,D::I)::Int128
+    ans::Int128 = Int128(0)
+    for i::I in 1:length(CCIs)-1
         ans += solveLine(CCIs[i+1]-CCIs[i]+1,BBIs[i],BBIs[i+1],D)
     end
-    for i in 2:length(CCIs)-1
+    for i::I in 2:length(CCIs)-1
         ans -= BBIs[i]
     end
     return ans
 end
 
-function solveSingleQuad(R::Int64,C::Int64,e1::Int64,D::Int64)::Int128
+function solveSingleQuad(R::I,C::I,e1::I,D::I)::Int128
     return Int128(R*C) * Int128(e1) + Int128((R-1)*R ÷ 2) * Int128(C) * Int128(D) + Int128((C-1)*C ÷ 2) * Int128(R) * Int128(D)
 end
 
 ### Used OEIS to get the formulas
-function solveSingleTriangle(R::Int64,e1::Int64,D::Int64)::Int128
+function solveSingleTriangle(R::I,e1::I,D::I)::Int128
     return Int128(e1) * Int128(R * (R+1) ÷ 2) + Int128(2D) * Int128(R-1) * Int128(R) * Int128(R+1) ÷ 6
 end
 
-function solveTrapezoid(R1::Int64,R2::Int64,e1::Int64,D::Int64)::Int128
+function solveTrapezoid(R1::I,R2::I,e1::I,D::I)::Int128
     (R1,R2) = R1 > R2 ? (R1,R2) : (R2,R1)
     H = R1-R2+1
     return solveSingleQuad(R2,H,e1,D) + solveSingleTriangle(H-1,e1+R2*D,D)
 end
 
 ## To figure out where the break point is, we just consider a line wrapped around from one corner ot the other
-function solveDoubleQuad(R::Int64,C::Int64,e1::Int64,e2::Int64,D::Int64)::Int128
-    if R > C; (R,C) = (C,R); end
-    m = findLineIdx(R+C-1,e1,e2,D)
-
-    ans = zero(Int128)
+function solveDoubleQuad(R::I,C::I,e1::I,e2::I,D::I)::Int128
+    if R::I > C::I; (R,C) = (C,R); end
+    m::I = findLineIdx(R+C-1,e1,e2,D)
+    ans::Int128 = Int128(0)
     ## Do the first part
-    if m <= R
-        ans += solveSingleTriangle(m,e1,D)
-    elseif m <= C
-        ans += solveTrapezoid(m,m-R+1,e1,D)
+    if m <= R;     ans += solveSingleTriangle(m,e1,D)
+    elseif m <= C; ans += solveTrapezoid(m,m-R+1,e1,D)
     else
         ans += solveSingleQuad(C,m-C,e1,D)
         ans += solveTrapezoid(C,m-R,e1+D*(m-C),D)
@@ -302,10 +232,8 @@ function solveDoubleQuad(R::Int64,C::Int64,e1::Int64,e2::Int64,D::Int64)::Int128
 
     m = R+C-1-m
     ## Do the first part
-    if m <= R
-        ans += solveSingleTriangle(m,e2,D)
-    elseif m <= C
-        ans += solveTrapezoid(m,m-R+1,e2,D)
+    if m <= R;     ans += solveSingleTriangle(m,e2,D)
+    elseif m <= C; ans += solveTrapezoid(m,m-R+1,e2,D)
     else
         ans += solveSingleQuad(C,m-C,e2,D)
         ans += solveTrapezoid(C,m-R,e2+D*(m-C),D)
@@ -314,31 +242,158 @@ function solveDoubleQuad(R::Int64,C::Int64,e1::Int64,e2::Int64,D::Int64)::Int128
 end
 
 
-function solveQuad(R::Int64,C::Int64,nw::Int64,ne::Int64,sw::Int64,se::Int64,D::Int64)::Int128
-    nbr = findLineIdx(C,nw,ne,D)
-    sbr = findLineIdx(C,sw,se,D)
-    wbr = findLineIdx(R,nw,sw,D)
-    ebr = findLineIdx(R,ne,se,D)
+function solveQuad(R::I,C::I,nw::I,ne::I,sw::I,se::I,D::I)::Int128
+    nbr::I = findLineIdx(C,nw,ne,D)
+    sbr::I = findLineIdx(C,sw,se,D)
+    wbr::I = findLineIdx(R,nw,sw,D)
+    ebr::I = findLineIdx(R,ne,se,D)
 
-    topsize = min(ebr,wbr)
-    botsize = R-max(ebr,wbr)
-    midsize = R - (topsize+botsize)
+    topsize::I = min(ebr,wbr)
+    botsize::I = R-max(ebr,wbr)
+    midsize::I = R - (topsize+botsize)
 
-    tnw = solveSingleQuad(nbr,  min(ebr,wbr),nw,D)
-    tne = solveSingleQuad(C-nbr,min(ebr,wbr),ne,D)
-    tsw = solveSingleQuad(sbr,  R-max(ebr,wbr),sw,D)
-    tse = solveSingleQuad(C-sbr,R-max(ebr,wbr),se,D)
+    tnw::Int128 = solveSingleQuad(nbr,  min(ebr,wbr),nw,D)
+    tne::Int128 = solveSingleQuad(C-nbr,min(ebr,wbr),ne,D)
+    tsw::Int128 = solveSingleQuad(sbr,  R-max(ebr,wbr),sw,D)
+    tse::Int128 = solveSingleQuad(C-sbr,R-max(ebr,wbr),se,D)
 
-    ans = tnw+tne+tsw+tse
+    ans::Int128 = tnw+tne+tsw+tse
     if wbr < ebr;      ans += solveDoubleQuad(midsize,C, sw + (R-max(ebr,wbr))*D, ne + min(ebr,wbr) * D, D)
     elseif ebr < wbr;  ans += solveDoubleQuad(midsize,C, se + (R-max(ebr,wbr))*D, nw + min(ebr,wbr) * D, D)
     end
-
     return ans
 end
 
-##x = solveQuad(4,3,9,19,14,4,5)
-##x = solveQuad(5,5,30,4,3,36,9)
-##main("Dtiny2.in")
+function solveLarge(R::I,C::I,N::I,D::I,RR::VI,CC::VI,BB::VI)::String
+    ## First, we get the indices of the rows and columns
+    RRIs::VI = unique(sort(vcat([1,R],RR)))
+    CCIs::VI = unique(sort(vcat([1,C],CC)))
+    lr::I = length(RRIs)
+    lc::I = length(CCIs)
+    superR2idx::Dict{I,I} = Dict{I,I}()
+    superC2idx::Dict{I,I} = Dict{I,I}()
+    for (i::I,r::I) in enumerate(RRIs); superR2idx[r] = i; end
+    for (i::I,c::I) in enumerate(CCIs); superC2idx[c] = i; end
+    
+    ## Use Dijkstra to calculate the values of the super coordinates
+    ansarr::Array{I,2} = fill(-1,lr,lc)
+    mh::MinHeap{TI} = MinHeap{TI}()
+    for i in 1:N
+        r::I = superR2idx[RR[i]]
+        c::I = superC2idx[CC[i]]
+        push!(mh,(BB[i],r,c))                
+    end
+    while !isempty(mh)
+        (d::I,i::I,j::I) = pop!(mh)
+        if ansarr[i,j] >= 0; continue; end
+        ansarr[i,j] = d
+        if i > 1;  push!(mh,(d+D*(RRIs[i]-RRIs[i-1]),i-1,j)); end
+        if i < lr; push!(mh,(d+D*(RRIs[i+1]-RRIs[i]),i+1,j)); end
+        if j > 1;  push!(mh,(d+D*(CCIs[j]-CCIs[j-1]),i,j-1)); end
+        if j < lc; push!(mh,(d+D*(CCIs[j+1]-CCIs[j]),i,j+1)); end
+    end
+
+    ## Do the check for impossible conditions
+    for idx in 1:N
+        i,j = superR2idx[RR[idx]],superC2idx[CC[idx]]
+        if ansarr[i,j] != BB[idx]; return "IMPOSSIBLE"; end
+    end
+
+    ans::Int128 = Int128(0)
+    if lr == 1; ans = solve1DCase(CCIs,ansarr[1,:],D); return string(ans % 1_000_000_007); end
+    if lc == 1; ans = solve1DCase(RRIs,ansarr[:,1],D); return string(ans % 1_000_000_007); end
+    for i in 1:lr-1
+        for j in 1:lc-1
+            x = solveQuad(RRIs[i+1]-RRIs[i]+1,CCIs[j+1]-CCIs[j]+1,ansarr[i,j],ansarr[i,j+1],ansarr[i+1,j],ansarr[i+1,j+1],D)
+            ans += x
+        end
+    end
+
+    for i in 1:lr-1
+        for j in 2:lc-1
+            ans -= solveLine(RRIs[i+1]-RRIs[i]+1,ansarr[i,j],ansarr[i+1,j],D)
+        end
+    end
+
+    for i in 2:lr-1
+        for j in 1:lc-1
+            ans -= solveLine(CCIs[j+1]-CCIs[j]+1,ansarr[i,j],ansarr[i,j+1],D)
+        end
+    end
+
+    for i in 2:lr-1
+        for j in 2:lc-1
+            ans += ansarr[i,j]
+        end
+    end
+    
+    return string(ans % 1_000_000_007)
+end
+
+
+function main(infn="")
+    global infile
+    infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
+    tt::I = gi()
+    for qq in 1:tt
+        print("Case #$qq: ")
+        R,C,N,D = gis()
+        RR::VI = fill(0,N)
+        CC::VI = fill(0,N)
+        BB::VI = fill(0,N)
+        for i in 1:N; RR[i],CC[i],BB[i] = gis(); end
+        #ans = solveSmall(R,C,N,D,RR,CC,BB)
+        ans = solveLarge(R,C,N,D,RR,CC,BB)
+        print("$ans\n")
+    end
+end
+
+function gencase(Rmin::I,Rmax::I,Cmin::I,Cmax::I,Nmin::I,Nmax::I,Dmin::I,Dmax::I,Bmin::I,Bmax::I)
+    R = rand(Rmin:Rmax)
+    C = rand(Cmin:Cmax)
+    N = rand(Nmin:Nmax)
+    D = rand(Dmin:Dmax)
+    while N > R*C
+        if R <= C; R += 1; else C += 1; end
+    end
+    pts::SPI = SPI()
+    while length(pts) < N
+        push!(pts,(rand(1:R),rand(1:C)))
+    end
+    lpts::VPI = shuffle([x for x in pts])
+    RR::VI = [x[1] for x in lpts]
+    CC::VI = [x[2] for x in lpts]
+    BB::VI = rand(Bmin:Bmax,N)
+    return (R,C,N,D,RR,CC,BB)
+end
+
+function test(ntc::I,Rmin::I,Rmax::I,Cmin::I,Cmax::I,Nmin::I,Nmax::I,Dmin::I,Dmax::I,Bmin::I,Bmax::I,check::Bool=true)
+    pass = 0
+    for ttt in 1:ntc
+        (R,C,N,D,RR,CC,BB) = gencase(Rmin,Rmax,Cmin,Cmax,Nmin,Nmax,Dmin,Dmax,Bmin,Bmax)
+        ans2 = solveLarge(R,C,N,D,RR,CC,BB)
+        if check
+            ans1 = solveSmall(R,C,N,D,RR,CC,BB)
+            if ans1 == ans2
+                 pass += 1
+            else
+                print("ERROR: ttt:$ttt ans1:$ans1 ans2:$ans2\n")
+                ans1 = solveSmall(R,C,N,D,RR,CC,BB)
+                ans2 = solveLarge(R,C,N,D,RR,CC,BB)
+            end
+       else
+           print("Case $ttt: $ans2\n")
+       end
+    end
+    if check; print("$pass/$ntc passed\n"); end
+end
+
+Random.seed!(8675309)
 main()
+#for ntc in (1,10,100,1000)
+#    test(ntc,1,200,1,200,1,200,1,20,1,20)
+#    test(ntc,1,200,1,200,1,200,1,1000000000,1,1000000000)
+#end
+#test(200,1,1000000000,1,1000000000,1,200,1,1000000000,1,1000000000,false)
+
 

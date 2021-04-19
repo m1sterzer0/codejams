@@ -1,4 +1,18 @@
-using Printf
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
 
 ######################################################################################################
 ### Greedy plan should work.
@@ -13,48 +27,58 @@ using Printf
 
 ## min packages = floor( Qij / (1.1*Ri))
 
+function solve(N::I,P::I,R::VI,Q::Array{I,2})
+    ## Step 1
+    QQ::Vector{VPI} = [VPI() for i in 1:N]
+    for i::I in 1:N
+        for j::I in 1:P
+            minElem::I = (10 * Q[i,j] + 11 * R[i] - 1) ÷ (11 * R[i])  ### All integer ceiling function
+            maxElem::I = (10 * Q[i,j]) ÷ (9 * R[i])
+            if minElem > maxElem; continue; end
+            push!(QQ[i],(minElem,maxElem))
+        end
+        sort!(QQ[i])
+    end
+        
+    ## Step 2
+    ans::I = 0
+    while(true)
+        if any(isempty,QQ); break; end
+        mymin::I = maximum(QQ[i][1][1] for i in 1:N)
+        mymax::I = minimum(QQ[i][1][2] for i in 1:N)
+        if mymin <= mymax
+            ans += 1
+            foreach(popfirst!,QQ)
+        else
+            for i in 1:N
+                if QQ[i][1][2] < mymin; popfirst!(QQ[i]); end
+            end
+        end
+    end
+    return ans
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N,P = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        R = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        Q = zeros(Int64,N,P)
-        for i in 1:N
-            Q[i,:] = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        end
-
-        ## Step 1
-        QQ = [[] for i in 1:N]
-        for i in 1:N
-            for j in 1:P
-                minElem = (10 * Q[i,j] + 11 * R[i] - 1) ÷ (11 * R[i])  ### All integer ceiling function
-                maxElem = (10 * Q[i,j]) ÷ (9 * R[i])
-                if minElem > maxElem; continue; end
-                push!(QQ[i],(minElem,maxElem))
-            end
-            sort!(QQ[i])
-        end
-            
-        ## Step 2
-        ans = 0
-        while(true)
-            if any(isempty,QQ); break; end
-            mymin = maximum(QQ[i][1][1] for i in 1:N)
-            mymax = minimum(QQ[i][1][2] for i in 1:N)
-            if mymin <= mymax
-                ans += 1
-                foreach(popfirst!,QQ)
-            else
-                for i in 1:N
-                    if QQ[i][1][2] < mymin; popfirst!(QQ[i]); end
-                end
-            end
-        end
-
+        N,P = gis()
+        R = gis()
+        Q::Array{I,2} = fill(0,N,P)
+        for i in 1:N; Q[i,:] = gis(); end
+        ans = solve(N,P,R,Q)
         print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

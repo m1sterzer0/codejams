@@ -1,4 +1,18 @@
-using Printf
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
 
 ######################################################################################################
 ### This is tougher.  We need to reason.
@@ -38,8 +52,8 @@ using Printf
 ###    I'll implement it below.
 ######################################################################################################
 
-function calcProb(P,N,K)
-    A = zeros(N+1,N+1)
+function calcProb(P::VF,N::I,K::I)::F
+    A::Array{F,2} = fill(0.00,N+1,N+1)
     A[1,1] = 1.0
     for i in 1:N
         A[i+1,1] = A[i,1] * (1 - P[i])
@@ -51,18 +65,18 @@ function calcProb(P,N,K)
     return res
 end
 
-function allocate(P,U,N,sidx)
-    xx = sum(x->1.00-x, P[sidx:end])
-    if sidx > 1 && xx <= U
-        P2 = copy(P)
+function allocate(P::VF,U::F,N::I,sidx::I)
+    xx::F = sum(x->1.00-x, P[sidx:end])
+    if sidx::I > 1 && xx <= U
+        P2::VF = copy(P)
         P2[sidx:end] .= 1.000
         P2[sidx-1] = min(1.000, P2[sidx-1] + (U-xx)) 
         return P2
     else
-        lb = P[sidx]; ub = 1.000
+        lb::F = P[sidx]; ub::F = 1.000
         while (ub-lb) > 1e-10
-            m = (ub+lb) * 0.5
-            yy = sum(x->max(0.00,m-x),P[sidx:end])
+            m::F = (ub+lb) * 0.5
+            yy::F = sum(x->max(0.00,m-x),P[sidx:end])
             (lb,ub) = (yy < U) ? (m,ub) : (lb,m)
         end
         m = (ub+lb) * 0.5
@@ -72,28 +86,56 @@ function allocate(P,U,N,sidx)
     end
 end
 
+function solveLarge(N::I,K::I,U::F,P::VF)::F
+    Pref::VF = copy(P)
+    sort!(Pref)
+    cumsum::VF = fill(0.0,N+1)
+    best = 0.00
+    for i in 1:N; cumsum[i+1] = cumsum[i] + (1.00-Pref[i]); end
+    for i in 1:N
+        if i > 1 && cumsum[end] - cumsum[i-1] < U; break; end ## Don't need to do better
+        Pwork = allocate(Pref,U,N,i)
+        best = max(best,calcProb(Pwork,N,K))
+    end
+    return best
+end
+
+######################################################################################################
+### 1) For the small, it is clear that the product is maximized when we improve the smallest element
+######################################################################################################
+
+function solveSmall(N::I,K::I,U::F,P::VF)::F
+    lb::F,ub::F = minimum(P),1.00
+    while ub-lb > 1e-10
+        m::F = 0.5 * (ub+lb)
+        x::F = sum(x -> x<m ? m-x : 0.0, P)
+        (lb,ub) = x < U ? (m,ub) : (lb,m)
+    end
+    m = 0.5*(ub+lb)
+    return prod(x -> max(x,m), P)
+end    
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N,K = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        U = parse(Float64,rstrip(readline(infile)))
-        P = [parse(Float64,x) for x in split(rstrip(readline(infile)))]
-
-        ## Not convinced theoretically why this work, but i'll code it Anyway
-        Pref = copy(P)
-        sort!(Pref)
-        cumsum = zeros(N+1)
-        best = 0.00
-        for i in 1:N; cumsum[i+1] = cumsum[i] + (1.00-Pref[i]); end
-        for i in 1:N
-            if i > 1 && cumsum[end] - cumsum[i-1] < U; break; end ## Don't need to do better
-            Pwork = allocate(Pref,U,N,i)
-            best = max(best,calcProb(Pwork,N,K))
-        end
-        @printf("%.8f\n",best)
+        N,K = gis()
+        U = gf()
+        P::VF = gfs()
+        #ans = solveSmall(N,K,U,P)
+        ans = solveLarge(N,K,U,P)
+        print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

@@ -1,4 +1,90 @@
-using Printf
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+mutable struct Gs; moves::VI; bestPerSuit::VPI; idx::VI; topc::VPI; end
+Base.copy(g::Gs)::Gs = Gs(copy(g.moves), copy(g.bestPerSuit), copy(g.idx), copy(g.topc))
+
+function autoPlay(B::Array{PI,2},N::Int64,C::I,g::Gs)
+    ## Do my moves
+    while !isempty(g.moves)
+        i::I = pop!(g.moves)
+        if g.idx[i] == -1; g.topc[i] = (-1,-1)
+        elseif g.idx[i] == C; g.idx[i] = -1; g.topc[i] = (-1,-1)
+        else
+            g.idx[i] += 1
+            (a::I,b::I) = B[i,g.idx[i]]
+            g.topc[i] = (a,b)
+            (v,bi) = g.bestPerSuit[b]
+            if v == -1; g.bestPerSuit[b] = (a,i)
+            elseif a < v; push!(g.moves,i)
+            else; g.bestPerSuit[b] = (a,i); push!(g.moves,bi)
+            end
+        end
+    end
+
+    ## Check for win
+    weWon = true
+    for i in 1:N
+        if g.idx[i] != -1 && g.idx[i] != C; weWon = false; break; end
+    end
+    if weWon; return true; end
+
+    ## Check for loss
+    empty = 0
+    for i in 1:N
+        if g.topc[i][1] == -1; empty = i; break; end
+    end
+    if empty == 0; return false; end
+
+    ## Iterate through choices to fill empty row
+    for i in 1:N
+        if g.idx[i] == -1; continue; end
+        if g.idx[i] == C; continue; end
+        g2 = copy(g)
+        g2.topc[empty] = B[i,g2.idx[i]]
+        g2.idx[i] += 1
+        (a,b) = B[i,g2.idx[i]]
+        g2.topc[i] = (a,b)
+        (v,bi) = g2.bestPerSuit[b]
+        if v != -1
+            if a < v
+                push!(g2.moves,i)
+            else
+                g2.bestPerSuit[b] = (a,i)
+                push!(g2.moves,bi)
+            end
+        end
+        if autoPlay(B,N,C,g2); return true; end
+    end
+    return false
+end
+
+function solveSmall(P::I,Parr::Vector{VPI},N::I,C::I,PP::VI)::String
+    B::Array{PI,2} = fill((-1,-1),N,C)
+    for i in 1:N; B[i,:] = Parr[PP[i]+1]; end
+    g = Gs(Vector{Int64}(), [(-1,-1) for i in 1:50000], [1 for i in 1:N], [B[i,1] for i in 1:N])
+    for (i,(a,b)) in enumerate(g.topc)
+        g.bestPerSuit[b] = max(g.bestPerSuit[b],(a,i))
+    end
+    for (i,(a,b)) in enumerate(g.topc)
+        if  a < g.bestPerSuit[b][1]; push!(g.moves,i); end
+    end
+    res = autoPlay(B,N,C,g)
+    return res ? "POSSIBLE" : "IMPOSSIBLE"
+end
 
 ######################################################################################################
 ### We need a TON of observations to make this tractible (many of which I couldn't come up
@@ -104,8 +190,8 @@ using Printf
 ###    the graph remains these (queen in my stack  --> paired king at bottom of another stack) edges. 
 ######################################################################################################
 
-function checkAfterInitialMoves(Parr,PP,N,C)
-    B = fill((-1,-1),N,C)
+function checkAfterInitialMoves(Parr::Vector{VPI},PP::VI,N::I,C::I)
+    B::Array{PI,2} = fill((-1,-1),N,C)
     for i in 1:N; B[i,:] = Parr[PP[i]+1]; end
     bestPerSuit = fill((-1,-1),50000)
     emptyCount = 0
@@ -141,88 +227,104 @@ function checkAfterInitialMoves(Parr,PP,N,C)
     return 0
 end
 
+function solveLarge(P::I,Parr::Vector{VPI},N::I,C::I,PP::VI)::String
+    kingPerSuit  = fill(-1,50000)
+    queenPerSuit = fill(-1,50000)
+
+    ## First pass to identify the functional kings/queens
+    for i in 1:N
+        stk::VPI = Parr[PP[i]+1]
+        for (v,s) in stk
+            if v > kingPerSuit[s]
+                queenPerSuit[s] = kingPerSuit[s]
+                kingPerSuit[s] = v
+            elseif v > queenPerSuit[s]
+                queenPerSuit[s] = v
+            end
+        end
+    end
+
+    ## Intermediate step to see how many suits we are dealing with and
+    ## exit early if it doesn't match N
+    totSuits = sum([1 for i in 1:50000 if kingPerSuit[i] > 0])
+    if totSuits < N; return "POSSIBLE"; end 
+    if totSuits > N; return "IMPOSSIBLE"; end 
+
+    res = checkAfterInitialMoves(Parr,PP,N,C)
+    if res == 1; return "POSSIBLE"; end
+    if res == -1; return "IMPOSSIBLE"; end  ## Don't think we really need this, but not hard
+
+    ## Second pass to identify
+    ## * stacks with a bottom card that is a signleton of its suit
+    ## * stacks with a king at the bottom and another king in the stack
+    ## * suits whose king is on the bottom of the stack (and the stack which it is on the bottom of)
+    ## * for stacks with bottom kings, a list of the suits of the queens present in that stack
+    bottomSingletonStacks::SI = SI()
+    kingKingStacks::SI = SI()
+    suitsWithBottomKing::VI = fill(-1,50000)
+    queensPerStack::VVI = [VI() for i in 1:N]
+
+    for i in 1:N
+        stk = Parr[PP[i]+1]
+        (v,s) = stk[end]
+        if kingPerSuit[s] == v
+            suitsWithBottomKing[s] = i
+            if queenPerSuit[s] == -1; push!(bottomSingletonStacks,i); end
+            for (a,b) in stk[1:end-1]
+                if a == kingPerSuit[b];  push!(kingKingStacks,i); end
+                if a == queenPerSuit[b]; push!(queensPerStack[i],b); end
+            end
+        end
+    end
+
+    ## TO avoid stack overflow on windows, I'm doing the recursion in a loop 
+    foundSolution = false
+    visited = fill(false,N)
+    for i in bottomSingletonStacks
+        q = [i]
+        while !isempty(q)
+            x = pop!(q)
+            if x < 0; continue; end
+            if x in kingKingStacks; foundSolution = true; break; end
+            for qSuit in queensPerStack[x]
+                push!(q,suitsWithBottomKing[qSuit])
+            end
+        end
+        if foundSolution; break; end
+    end
+    return foundSolution ? "POSSIBLE" : "IMPOSSIBLE"
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    P = parse(Int64,readline(infile))
-    Parr = [[] for i in 1:P]
+
+    ## Premade stacks
+    P = gi()
+    Parr::Vector{VPI} = [VPI() for i in 1:P]
     for i in 1:P
-        X = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
+        X::VI = gis()
         Parr[i] = collect(zip(X[2:2:end],X[3:2:end]))
     end
-    tt = parse(Int64,readline(infile))
+
+    ## Regular testcase stuff
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N,C = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-        PP = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-
-        kingPerSuit  = fill(-1,50000)
-        queenPerSuit = fill(-1,50000)
-
-        ## First pass to identify the functional kings/queens
-        for i in 1:N
-            stk = Parr[PP[i]+1]
-            for (v,s) in stk
-                if v > kingPerSuit[s]
-                    queenPerSuit[s] = kingPerSuit[s]
-                    kingPerSuit[s] = v
-                elseif v > queenPerSuit[s]
-                    queenPerSuit[s] = v
-                end
-            end
-        end
-
-        ## Intermediate step to see how many suits we are dealing with and
-        ## exit early if it doesn't match N
-        totSuits = sum([1 for i in 1:50000 if kingPerSuit[i] > 0])
-        if totSuits < N; print("POSSIBLE\n"); continue; end
-        if totSuits > N; print("IMPOSSIBLE\n"); continue; end
-
-        res = checkAfterInitialMoves(Parr,PP,N,C)
-        if res == 1; print("POSSIBLE\n"); continue; end
-        if res == -1; print("IMPOSSIBLE\n"); continue; end  ## Don't think we really need this, but not hard
-
-        ## Second pass to identify
-        ## * stacks with a bottom card that is a signleton of its suit
-        ## * stacks with a king at the bottom and another king in the stack
-        ## * suits whose king is on the bottom of the stack (and the stack which it is on the bottom of)
-        ## * for stacks with bottom kings, a list of the suits of the queens present in that stack
-        bottomSingletonStacks::Set{Int64} = Set()
-        kingKingStacks::Set{Int64} = Set()
-        suitsWithBottomKing::Vector{Int64} = fill(-1,50000)
-        queensPerStack::Array{Array{Int64,1},1} = [[] for i in 1:N]
-
-        for i in 1:N
-            stk = Parr[PP[i]+1]
-            (v,s) = stk[end]
-            if kingPerSuit[s] == v
-                suitsWithBottomKing[s] = i
-                if queenPerSuit[s] == -1; push!(bottomSingletonStacks,i); end
-                for (a,b) in stk[1:end-1]
-                    if a == kingPerSuit[b];  push!(kingKingStacks,i); end
-                    if a == queenPerSuit[b]; push!(queensPerStack[i],b); end
-                end
-            end
-        end
-
-        ## TO avoid stack overflow on windows, I'm doing the recursion in a loop 
-        foundSolution = false
-        visited = fill(false,N)
-        for i in bottomSingletonStacks
-            q = [i]
-            while !isempty(q)
-                x = pop!(q)
-                if x < 0; continue; end
-                if x in kingKingStacks; foundSolution = true; break; end
-                for qSuit in queensPerStack[x]
-                    push!(q,suitsWithBottomKing[qSuit])
-                end
-            end
-            if foundSolution; break; end
-        end
-        if foundSolution; print("POSSIBLE\n");
-        else;             print("IMPOSSIBLE\n");
-        end
+        N,C = gis()
+        PP = gis()
+        #ans = solveSmall(P,Parr,N,C,PP)
+        ans = solveLarge(P,Parr,N,C,PP)
+        print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+
