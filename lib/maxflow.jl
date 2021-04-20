@@ -68,7 +68,7 @@ end
 ## BEGIN Dinic's Max Flow
 ################################################################
 
-function dinic(n::I, s::I, t::I, edgeList::Vector{TI}})::I
+function dinic(n::I, s::I, t::I, edgeList::Vector{TI})::I
     myinf = typemax(Int64)
     nume = size(edgeList,1)
     adj,newEdgeList = _dinicBuildAdj(n,edgeList)

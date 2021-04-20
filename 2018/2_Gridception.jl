@@ -1,3 +1,19 @@
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
 ######################################################################################################
 ### Great title AND movie! (https://en.wikipedia.org/wiki/Inception)
 ###
@@ -60,9 +76,9 @@ end
 ## END UnionFindFast
 ################################################################
 
-function findpat(g::Array{Char,2},R::Int64,C::Int64,nw::Char,ne::Char,sw::Char,se::Char)::Bool
-    for i in 1:R
-        for j in 1:C
+function findpat(g::Array{Char,2},R::I,C::I,nw::Char,ne::Char,sw::Char,se::Char)::Bool
+    for i::I in 1:R
+        for j::I in 1:C
             if g[i,j] != nw; continue; end
             if ne != '.' && (j == C || g[i,j+1] != ne);             continue; end
             if sw != '.' && (i == R || g[i+1,j] != sw);             continue; end
@@ -73,20 +89,21 @@ function findpat(g::Array{Char,2},R::Int64,C::Int64,nw::Char,ne::Char,sw::Char,s
     return false
 end
 
-function check(g::Array{Char,2}, g2::Array{Char,2}, g3::Array{Int64,2}, R::Int64, C::Int64, nw::Char, ne::Char, sw::Char, se::Char)::Int64
-    best::Int64 = 0
-    for i in 1:R
-        for j in 1:C
+function check(g::Array{Char,2}, g2::Array{Char,2}, g3::Array{Int64,2},
+               R::I, C::I, nw::Char, ne::Char, sw::Char, se::Char)::I
+    best::I = 0
+    for i::I in 1:R
+        for j::I in 1:C
             fill!(g2,nw)
             if i+1<=R; g2[i+1:R,1:j] .= sw; end
             if j+1<=C; g2[1:i,j+1:C] .= ne; end
             if i+1<=R && j+1<=C; g2[i+1:R,j+1:C] .= se; end
 
             fill!(g3,-1)
-            ptr = 0
-            uf = UnionFindFast(R*C)
-            for ii in 1:R
-                for jj in 1:C
+            ptr::I = 0
+            uf::UnionFindFast = UnionFindFast(R*C)
+            for ii::I in 1:R
+                for jj::I in 1:C
                     if g2[ii,jj] == g[ii,jj]
                         ptr += 1; g3[ii,jj] = ptr
                         if ii > 1 && g3[ii-1,jj] > 0; joinset(uf,ptr,g3[ii-1,jj]); end
@@ -94,7 +111,7 @@ function check(g::Array{Char,2}, g2::Array{Char,2}, g3::Array{Int64,2}, R::Int64
                     end
                 end
             end
-            for xx in 1:ptr
+            for xx::I in 1:ptr
                 best = max(best,getsize(uf,xx))
             end
         end
@@ -102,43 +119,48 @@ function check(g::Array{Char,2}, g2::Array{Char,2}, g3::Array{Int64,2}, R::Int64
     return best
 end
 
+function solve(R::I,C::I,g::Array{Char,2})::I
+    best::I = 0
+    g2::Array{Char,2} = fill('.',R,C)
+    g3::Array{Int64,2} = fill(-1,R,C)
+    patterns = [
+        ['W','.','.','.','W','W','W','W'],
+        ['W','B','.','.','W','B','W','B'],
+        ['W','.','B','.','W','W','B','B'],
+        ['W','W','W','B','W','W','W','B'],
+        ['W','W','B','W','W','W','B','W'],
+        ['W','B','W','W','W','B','W','W'],
+        ['W','B','B','B','W','B','B','B'],
+        ['W','B','B','W','W','B','B','W']
+    ]
+    revpat = [ [x == 'W' ? 'B' : x == 'B' ? 'W' : '.' for x in p] for p in patterns]
+    append!(patterns,revpat)
+    for p in patterns
+        if findpat(g,R,C,p[1],p[2],p[3],p[4]); best = max(best,check(g,g2,g3,R,C,p[5],p[6],p[7],p[8])); end
+    end
+    return best
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        R,C = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
+        R,C = gis()
         g::Array{Char,2} = fill('.',R,C)
-        g2::Array{Char,2} = fill('.',R,C)
-        g3::Array{Int64,2} = fill(-1,R,C)
-
-        for i in 1:R
-            g[i,:] .= [x for x in rstrip(readline(infile))]
-        end
-
-        best = 0
-
-        ## do the W and B
-        for nw in ('W','B')
-            if findpat(g,R,C,nw,'.','.','.'); best = max(best,check(g,g2,g3,R,C,nw,nw,nw,nw)); end
-        end
-
-        for (nw,ne) in [('B','W'), ('W','B')]
-            if findpat(g,R,C,nw,ne,'.','.'); best = max(best,check(g,g2,g3,R,C,nw,ne,nw,ne)); end
-        end
-
-        for (nw,sw) in [('B','W'), ('W','B')]
-            if findpat(g,R,C,nw,'.',sw,'.'); best = max(best,check(g,g2,g3,R,C,nw,nw,sw,sw)); end
-        end
-
-        for (nw,ne,sw,se) in [('W','W','W','B'), ('W','W','B','W'), ('W','B','W','W'), ('B','W','W','W'),
-                              ('B','B','B','W'), ('B','B','W','B'), ('B','W','B','B'), ('W','B','B','B'),
-                              ('B','W','W','B'), ('W','B','B','W')]
-            if findpat(g,R,C,nw,ne,sw,se); best = max(best,check(g,g2,g3,R,C,nw,ne,sw,se)); end
-        end
-
-        print("$best\n")
+        for i in 1:R; g[i,:] = [x for x in gs()]; end
+        ans = solve(R,C,g)
+        print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+

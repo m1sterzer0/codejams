@@ -1,9 +1,20 @@
-struct Myang
-    x1::Int64
-    y1::Int64
-    x2::Int64
-    y2::Int64
-end
+
+using Random
+infile = stdin
+## Type Shortcuts (to save my wrists and fingers :))
+const I = Int64; const VI = Vector{I}; const SI = Set{I}; const PI = NTuple{2,I};
+const TI = NTuple{3,I}; const QI = NTuple{4,I}; const VPI = Vector{PI}; const SPI = Set{PI}
+const VC = Vector{Char}; const VS = Vector{String}; VB = Vector{Bool}; VVI = Vector{Vector{Int64}}
+const F = Float64; const VF = Vector{F}; const PF = NTuple{2,F}
+
+gs()::String = rstrip(readline(infile))
+gi()::Int64 = parse(Int64, gs())
+gf()::Float64 = parse(Float64,gs())
+gss()::Vector{String} = split(gs())
+gis()::Vector{Int64} = [parse(Int64,x) for x in gss()]
+gfs()::Vector{Float64} = [parse(Float64,x) for x in gss()]
+
+struct Myang; x1::I; y1::I; x2::I; y2::I; end
 
 ## This works for sorting angles between 2 vectors (0-180deg)
 ## Tangents are guaranteed to be rational, so we can use those
@@ -12,20 +23,20 @@ Base.:(==)(a::Myang,b::Myang) = cmp(a,b) == 0
 Base.isless(a::Myang,b::Myang) = cmp(a,b) == -1
 Base.:(<=)(a::Myang,b::Myang) = cmp(a,b) <= 0
 
-function deg(a::Myang)::Float64
-    l1 = sqrt(a.x1*a.x1+a.y1*a.y1)
-    l2 = sqrt(a.x2*a.x2+a.y2*a.y2)
-    mycos = (a.x1*a.x2+a.y1*a.y2)/l1/l2
+function deg(a::Myang)::F
+    l1::F = sqrt(a.x1*a.x1+a.y1*a.y1)
+    l2::F = sqrt(a.x2*a.x2+a.y2*a.y2)
+    mycos::F = (a.x1*a.x2+a.y1*a.y2)/l1/l2
     return acos(mycos)*180.0/pi
 end
 
-function Base.cmp(a::Myang,b::Myang)::Int64
-    dp1::Int64 = a.x1*a.x2+a.y1*a.y2
-    xp1::Int64 = abs(a.x1*a.y2-a.x2*a.y1)
-    dp2::Int64 = b.x1*b.x2+b.y1*b.y2
-    xp2::Int64 = abs(b.x1*b.y2-b.x2*b.y1)
-    q1::Int64 = xp1 == 0 ? (dp1 > 0 ? 0 : 4) : dp1 == 0 ? 2 : dp1 > 0 ? 1 : 3
-    q2::Int64 = xp2 == 0 ? (dp2 > 0 ? 0 : 4) : dp2 == 0 ? 2 : dp2 > 0 ? 1 : 3
+function Base.cmp(a::Myang,b::Myang)::I
+    dp1::I = a.x1*a.x2+a.y1*a.y2
+    xp1::I = abs(a.x1*a.y2-a.x2*a.y1)
+    dp2::I = b.x1*b.x2+b.y1*b.y2
+    xp2::I = abs(b.x1*b.y2-b.x2*b.y1)
+    q1::I = xp1 == 0 ? (dp1 > 0 ? 0 : 4) : dp1 == 0 ? 2 : dp1 > 0 ? 1 : 3
+    q2::I = xp2 == 0 ? (dp2 > 0 ? 0 : 4) : dp2 == 0 ? 2 : dp2 > 0 ? 1 : 3
     if q1 != q2
         return cmp(q1,q2)
     elseif q1 == 0 || q1 == 2 || q1 == 4
@@ -81,7 +92,7 @@ function convertAngsToInts(angs::Vector{Tuple{Myang,Myang}},topBound::Myang,botB
         return u
     end
 
-    angt::Vector{Tuple{Int64,Int64}} = []
+    angt::VPI = []
     for (a,b) = angs
         n1 = dosearch(a)
         n2 = dosearch(b)
@@ -90,93 +101,109 @@ function convertAngsToInts(angs::Vector{Tuple{Myang,Myang}},topBound::Myang,botB
     return angt,maxval
 end
 
+function solve(N::I,X::VI,Y::VI,XX::VI,YY::VI)::F
+    topang::Vector{Tuple{Myang,Myang}} = []
+    midang::Vector{Tuple{Myang,Myang}} = []
+    botang::Vector{Tuple{Myang,Myang}} = []
+    for i in 1:N
+        x1,y1,x2,y2 = X[i],Y[i],XX[i],YY[i]
+        if x1 == 0; continue; end  ##Don't need to process lasers that only hit the segemet at one point in time.
+        a = Myang(x2-x1,y2-y1,0-x1,0-y1)
+        b = Myang(x2-x1,y2-y1,0-x1,1000-y1)
+        if b < a; (a,b) = (b,a); end
+        if isintersecting(x2-x1,y2-y1,-x1,-y1,-x1,1000-y1)
+            push!(topang,(a,b))
+        elseif isintersecting(x1-x2,y1-y2,-x1,-y1,-x1,1000-y1)
+            push!(botang,(a,b))
+        else
+            push!(midang,(a,b))
+        end
+    end
+
+    ## Process top and bottom piece
+    topBound = Myang(1,0,1,0)
+    botBound = Myang(1,0,-1,0)
+    for (a,b) in topang
+        if a > topBound; topBound = a; end
+    end
+    for (a,b) in botang
+        if b < botBound; botBound = b; end
+    end
+
+    ##print("DBG TOPBOUND: $(deg(topBound))\n")
+    ##print("DBG BOTBOUND: $(deg(botBound))\n")
+    if botBound <= topBound; return 0.0; end
+
+    for (a,b) in topang
+        if b > topBound; push!(midang,(topBound,b)); end
+    end
+    for (a,b) in botang
+        if a < botBound; push!(midang,(a,botBound)); end
+    end
+
+    #for (a,b) in midang; print("DBG MID2: $(deg(a)),$(deg(b))\n"); end
+
+    newmidang::Vector{Tuple{Myang,Myang}} = []
+    for (a,b) in midang
+        if b ≤ topBound || botBound ≤ a; continue; end
+        if a ≤ topBound; a = topBound; end
+        if botBound ≤ b; b = botBound; end
+        if a < b; push!(newmidang,(a,b)); end
+    end
+    sort!(newmidang)
+    midangtuples::VPI,maxval::I = convertAngsToInts(newmidang,topBound,botBound)
+
+    state::Dict{PI,F} = Dict{PI,F}()
+    state[(1,1)] = 1.000
+    pthresh = 1e-20
+    for (a,b) in midangtuples
+        newstate::Dict{PI,F} = Dict{PI,F}()
+        for ((c,d),v) in state
+            if (a > c); continue; end
+            ns1 = (c,max(b,d))
+            ns2 = b >= d ? (d,b) : (max(c,b),d)
+            for ns in (ns1,ns2)
+                if !haskey(newstate,ns); newstate[ns] = 0.000; end
+                newstate[ns] += 0.5*v
+            end
+        end
+        ## To get the runtime under control, we have to prune low prob states
+        badkeys::VPI = []
+        for ((c,d),v) in newstate
+            if v < pthresh; push!(badkeys,(c,d)); end
+        end
+        for k in badkeys; delete!(newstate,k); end
+        state = newstate
+    end
+
+    ans = haskey(state,(maxval,maxval)) ? 1.0 - state[(maxval,maxval)] : 1.00
+    return ans
+end
+
 function main(infn="")
+    global infile
     infile = (infn != "") ? open(infn,"r") : length(ARGS) > 0 ? open(ARGS[1],"r") : stdin
-    tt = parse(Int64,readline(infile))
+    tt::I = gi()
     for qq in 1:tt
         print("Case #$qq: ")
-        N = parse(Int64,rstrip(readline(infile)))
-        topang::Vector{Tuple{Myang,Myang}} = []
-        midang::Vector{Tuple{Myang,Myang}} = []
-        botang::Vector{Tuple{Myang,Myang}} = []
-        for i in 1:N
-            x1,y1,x2,y2 = [parse(Int64,x) for x in split(rstrip(readline(infile)))]
-            if x1 == 0; continue; end  ##Don't need to process lasers that only hit the segemet at one point in time.
-            a = Myang(x2-x1,y2-y1,0-x1,0-y1)
-            b = Myang(x2-x1,y2-y1,0-x1,1000-y1)
-            if b < a; (a,b) = (b,a); end
-            if isintersecting(x2-x1,y2-y1,-x1,-y1,-x1,1000-y1)
-                push!(topang,(a,b))
-            elseif isintersecting(x1-x2,y1-y2,-x1,-y1,-x1,1000-y1)
-                push!(botang,(a,b))
-            else
-                push!(midang,(a,b))
-            end
-        end
-        ##print("DBG\n")
-        ##for (a,b) in topang; print("DBG TOP: $(deg(a)),$(deg(b))\n"); end
-        ##for (a,b) in midang; print("DBG MID: $(deg(a)),$(deg(b))\n"); end
-        ##for (a,b) in botang; print("DBG BOT: $(deg(a)),$(deg(b))\n"); end
-
-        ## Process top and bottom piece
-        topBound = Myang(1,0,1,0)
-        botBound = Myang(1,0,-1,0)
-        for (a,b) in topang
-            if a > topBound; topBound = a; end
-        end
-        for (a,b) in botang
-            if b < botBound; botBound = b; end
-        end
-
-        ##print("DBG TOPBOUND: $(deg(topBound))\n")
-        ##print("DBG BOTBOUND: $(deg(botBound))\n")
-        if botBound <= topBound; print("0.0\n"); continue; end
-
-        for (a,b) in topang
-            if b > topBound; push!(midang,(topBound,b)); end
-        end
-        for (a,b) in botang
-            if a < botBound; push!(midang,(a,botBound)); end
-        end
-
-        #for (a,b) in midang; print("DBG MID2: $(deg(a)),$(deg(b))\n"); end
-
-        newmidang::Vector{Tuple{Myang,Myang}} = []
-        for (a,b) in midang
-            if b ≤ topBound || botBound ≤ a; continue; end
-            if a ≤ topBound; a = topBound; end
-            if botBound ≤ b; b = botBound; end
-            if a < b; push!(newmidang,(a,b)); end
-        end
-        sort!(newmidang)
-        midangtuples::Vector{Tuple{Int64,Int64}},maxval::Int64 = convertAngsToInts(newmidang,topBound,botBound)
-
-        state = Dict{Tuple{Int64,Int64},Float64}()
-        state[(1,1)] = 1.000
-        pthresh = 1e-20
-        for (a,b) in midangtuples
-            newstate = Dict{Tuple{Int64,Int64},Float64}()
-            for ((c,d),v) in state
-                if (a > c); continue; end
-                ns1 = (c,max(b,d))
-                ns2 = b >= d ? (d,b) : (max(c,b),d)
-                for ns in (ns1,ns2)
-                    if !haskey(newstate,ns); newstate[ns] = 0.000; end
-                    newstate[ns] += 0.5*v
-                end
-            end
-            ## To get the runtime under control, we have to prune low prob states
-            badkeys::Vector{Tuple{Int64,Int64}} = []
-            for ((c,d),v) in newstate
-                if v < pthresh; push!(badkeys,(c,d)); end
-            end
-            for k in badkeys; delete!(newstate,k); end
-            state = newstate
-        end
-
-        ans = haskey(state,(maxval,maxval)) ? 1.0 - state[(maxval,maxval)] : 1.00
+        N = gi()
+        X::VI = fill(0,N)
+        Y::VI = fill(0,N)
+        XX::VI = fill(0,N)
+        YY::VI = fill(0,N)
+        for i in 1:N; X[i],Y[i],XX[i],YY[i] = gis(); end
+        ans = solve(N,X,Y,XX,YY)
         print("$ans\n")
     end
 end
 
+Random.seed!(8675309)
 main()
+
+#using Profile, StatProfilerHTML
+#Profile.clear()
+#@profile main("B.in")
+#Profile.clear()
+#@profilehtml main("B.in")
+
+
