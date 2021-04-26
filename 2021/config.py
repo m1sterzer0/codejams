@@ -64,7 +64,10 @@ if __name__ == "__main__" :
         "Qual_CheatingDetection",
         "1A_AppendSort",
         "1A_PrimeTime",
-        "1A_HackedExam"
+        "1A_HackedExam",
+        "1B_BrokenClock",
+        "1B_Subtransmutation",
+        "1B_DigitBlocks"
     ]
 
     for prob in probList :
