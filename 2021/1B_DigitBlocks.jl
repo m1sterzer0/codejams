@@ -108,7 +108,7 @@ end
 ## -- Place it on a B-1 tower
 ## -- Place it on a B-2 tower
 ## -- Place it on a B-3 tower
-## -- Default algorithm of building towers up to B-2 and moving onto the next one.
+## -- Default algorithm of building towers up to B-3 and moving onto the next one.
 ## We can just do this with prework and use to choose
 ##########################################################################################
 

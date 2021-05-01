@@ -67,7 +67,10 @@ if __name__ == "__main__" :
         "1A_HackedExam",
         "1B_BrokenClock",
         "1B_Subtransmutation",
-        "1B_DigitBlocks"
+        "1B_DigitBlocks",
+        "1C_ClosestPick",
+        "1C_RoaringYears",
+        "1C_DoubleOrNOTing",
     ]
 
     for prob in probList :
